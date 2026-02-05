@@ -356,11 +356,12 @@
     }
     
     // 计算关机价格
-    // 公式: 关机价 = (功耗W × 24h × 电价) / (日产出BTC × 1000)
-    // 日产出 = (算力TH × 86400 × 区块奖励) / (难度 × 2^32)
+    // 公式: 关机价 = 日电费/TH ÷ 日产BTC/TH
+    // 日产BTC/TH = (86400s × 1e12H × 区块奖励) / (难度 × 2^32)
+    // 日电费/TH = 功耗比(W/TH) × 24h / 1000 × 电价($/kWh)
     function calcShutdownPrice(efficiency, difficulty, elecPrice) {
-      // 每TH每天产出BTC
-      const btcPerThPerDay = (86400 * BLOCK_REWARD) / (difficulty * Math.pow(2, 32));
+      // 每TH每天产出BTC (1 TH/s = 1e12 H/s)
+      const btcPerThPerDay = (86400 * 1e12 * BLOCK_REWARD) / (difficulty * Math.pow(2, 32));
       // 每TH每天电费
       const elecCostPerThPerDay = efficiency * 24 / 1000 * elecPrice;
       // 关机价 = 电费 / 产出
