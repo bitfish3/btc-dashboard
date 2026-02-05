@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>BTC Dashboard | 比特币仪表盘</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>₿</text></svg>">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
       --bg: #0d1117;
@@ -82,16 +81,6 @@
     }
     .price-change.up { background: rgba(63,185,80,0.15); color: var(--green); }
     .price-change.down { background: rgba(248,81,73,0.15); color: var(--red); }
-    
-    .chart-container {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1rem;
-      margin-bottom: 1rem;
-      height: 200px;
-    }
-    .chart-title { font-size: 0.8rem; color: var(--dim); margin-bottom: 0.5rem; }
     
     .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin-bottom: 1rem; }
     
@@ -231,11 +220,6 @@
       </div>
     </div>
     
-    <div class="chart-container">
-      <div class="chart-title">24H 价格走势</div>
-      <canvas id="priceChart"></canvas>
-    </div>
-    
     <div class="grid">
       <div class="card">
         <div class="card-icon">📊</div>
@@ -334,26 +318,8 @@
       { model: 'Whatsminer M30S++', hashrate: 112, power: 3472, efficiency: 31.0 },
     ];
     
-    let priceChart = null;
     let currentPrice = 0;
     let currentDifficulty = 0;
-    
-    function initChart() {
-      const ctx = document.getElementById('priceChart').getContext('2d');
-      priceChart = new Chart(ctx, {
-        type: 'line',
-        data: { labels: [], datasets: [{ data: [], borderColor: '#f7931a', backgroundColor: 'rgba(247,147,26,0.1)', borderWidth: 2, fill: true, tension: 0.4, pointRadius: 0 }] },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            x: { display: false },
-            y: { display: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#7d8590', font: { size: 10 }, callback: v => '$' + (v/1000).toFixed(0) + 'k' } }
-          }
-        }
-      });
-    }
     
     // 计算关机价格
     // 公式: 关机价 = 日电费/TH ÷ 日产BTC/TH
@@ -381,12 +347,6 @@
         document.getElementById('change-icon').textContent = change24h >= 0 ? '↑' : '↓';
         document.getElementById('change-text').textContent = Math.abs(change24h).toFixed(2) + '% (24h)';
         changeEl.className = 'price-change ' + (change24h >= 0 ? 'up' : 'down');
-        
-        const klineRes = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=24');
-        const klines = await klineRes.json();
-        priceChart.data.labels = klines.map(k => new Date(k[0]).getHours() + ':00');
-        priceChart.data.datasets[0].data = klines.map(k => parseFloat(k[4]));
-        priceChart.update();
         
         updateAhr999(currentPrice);
         if (currentDifficulty > 0) updateMiners();
@@ -485,7 +445,6 @@
       if (currentPrice > 0 && currentDifficulty > 0) updateMiners();
     });
     
-    initChart();
     fetchPrice();
     fetchDifficulty();
     updateCountdown();
