@@ -2,187 +2,333 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>BTC Dashboard | 比特币仪表盘</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>₿</text></svg>">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
-      --bg: #0a0a0f;
-      --card: rgba(255,255,255,0.03);
-      --border: rgba(255,255,255,0.08);
-      --text: #e8eaed;
-      --dim: #5a6270;
+      --bg: #0d1117;
+      --card: #161b22;
+      --card-hover: #1c2128;
+      --border: #30363d;
+      --text: #e6edf3;
+      --dim: #7d8590;
       --gold: #f7931a;
-      --cyan: #00d9ff;
-      --green: #00ff88;
-      --red: #ff6b6b;
+      --cyan: #58a6ff;
+      --green: #3fb950;
+      --red: #f85149;
+      --purple: #a371f7;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
-      padding: 2rem;
+      padding: 1rem;
+      line-height: 1.5;
     }
-    .container { max-width: 1000px; margin: 0 auto; }
+    .container { max-width: 900px; margin: 0 auto; }
     
     /* Header */
     .header {
-      text-align: center;
-      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
     }
     .logo {
-      font-size: 3rem;
-      margin-bottom: 0.5rem;
-    }
-    .title {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, var(--gold), #ff9500);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 1.5rem;
-      font-weight: 300;
+      font-weight: bold;
+    }
+    .header-text h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+    .header-text p {
+      font-size: 0.8rem;
       color: var(--dim);
     }
     
-    /* Price Card */
-    .price-card {
-      background: linear-gradient(135deg, rgba(247,147,26,0.1), rgba(0,217,255,0.05));
+    /* Price Hero */
+    .price-hero {
+      background: linear-gradient(135deg, rgba(247,147,26,0.15), rgba(88,166,255,0.1));
       border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 2rem;
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
       text-align: center;
-      margin-bottom: 2rem;
     }
-    .current-price {
-      font-size: 4rem;
+    .price-label {
+      font-size: 0.75rem;
+      color: var(--dim);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .price-value {
+      font-size: 3rem;
       font-weight: 700;
       background: linear-gradient(135deg, var(--gold), var(--cyan));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+      margin: 0.25rem 0;
     }
     .price-change {
-      font-size: 1.2rem;
-      margin-top: 0.5rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 500;
     }
-    .price-change.up { color: var(--green); }
-    .price-change.down { color: var(--red); }
+    .price-change.up { background: rgba(63,185,80,0.15); color: var(--green); }
+    .price-change.down { background: rgba(248,81,73,0.15); color: var(--red); }
+    
+    /* Chart Container */
+    .chart-container {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      height: 200px;
+    }
+    .chart-title {
+      font-size: 0.8rem;
+      color: var(--dim);
+      margin-bottom: 0.5rem;
+    }
     
     /* Grid */
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2rem;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1rem;
     }
     
-    /* Metric Card */
+    /* Card */
     .card {
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 1.5rem;
+      border-radius: 12px;
+      padding: 1rem;
+      transition: all 0.2s;
     }
-    .card-title {
-      font-size: 0.85rem;
+    .card:hover {
+      background: var(--card-hover);
+      border-color: var(--dim);
+    }
+    .card-icon {
+      font-size: 1.25rem;
+      margin-bottom: 0.5rem;
+    }
+    .card-label {
+      font-size: 0.7rem;
       color: var(--dim);
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      margin-bottom: 0.75rem;
     }
     .card-value {
-      font-size: 2rem;
+      font-size: 1.5rem;
       font-weight: 600;
+      margin: 0.25rem 0;
     }
     .card-sub {
-      font-size: 0.9rem;
-      color: var(--dim);
-      margin-top: 0.5rem;
-    }
-    .card-indicator {
-      display: inline-block;
-      padding: 0.25rem 0.75rem;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      font-weight: 500;
-      margin-top: 0.75rem;
-    }
-    .indicator-buy { background: rgba(0,255,136,0.15); color: var(--green); }
-    .indicator-hold { background: rgba(255,193,7,0.15); color: #ffc107; }
-    .indicator-sell { background: rgba(255,107,107,0.15); color: var(--red); }
-    
-    /* Halving */
-    .halving-card {
-      background: linear-gradient(135deg, rgba(247,147,26,0.08), transparent);
-    }
-    .countdown {
-      display: flex;
-      gap: 1rem;
-      margin-top: 1rem;
-    }
-    .countdown-item {
-      text-align: center;
-    }
-    .countdown-value {
-      font-size: 1.8rem;
-      font-weight: 700;
-      color: var(--gold);
-    }
-    .countdown-label {
       font-size: 0.75rem;
       color: var(--dim);
     }
+    .card-badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 500;
+      margin-top: 0.5rem;
+    }
+    .badge-buy { background: rgba(63,185,80,0.15); color: var(--green); }
+    .badge-hold { background: rgba(247,147,26,0.15); color: var(--gold); }
+    .badge-sell { background: rgba(248,81,73,0.15); color: var(--red); }
     
-    /* Shutdown Price */
+    /* Halving Card */
+    .halving-card {
+      grid-column: span 2;
+      background: linear-gradient(135deg, var(--card), rgba(247,147,26,0.05));
+    }
+    .countdown {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+    .countdown-item {
+      flex: 1;
+      text-align: center;
+      background: rgba(0,0,0,0.2);
+      padding: 0.5rem;
+      border-radius: 8px;
+    }
+    .countdown-num {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--gold);
+    }
+    .countdown-unit {
+      font-size: 0.65rem;
+      color: var(--dim);
+    }
+    
+    /* Shutdown Price Section */
+    .shutdown-section {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    .shutdown-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .shutdown-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .electricity-control {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      color: var(--dim);
+    }
+    .electricity-slider {
+      width: 100px;
+      height: 4px;
+      -webkit-appearance: none;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+    }
+    .electricity-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: var(--gold);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .electricity-value {
+      min-width: 60px;
+      text-align: right;
+      color: var(--gold);
+      font-weight: 500;
+    }
+    
+    /* Shutdown Grid */
     .shutdown-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 0.5rem;
-      margin-top: 1rem;
+      margin-bottom: 1rem;
     }
     .shutdown-item {
       text-align: center;
-      padding: 0.75rem;
-      background: rgba(255,255,255,0.02);
+      padding: 0.75rem 0.5rem;
+      background: rgba(0,0,0,0.2);
       border-radius: 8px;
+      border: 1px solid transparent;
+      transition: all 0.2s;
     }
-    .shutdown-label {
-      font-size: 0.7rem;
+    .shutdown-item.active {
+      border-color: var(--gold);
+      background: rgba(247,147,26,0.1);
+    }
+    .shutdown-item.below {
+      border-color: var(--red);
+      background: rgba(248,81,73,0.1);
+    }
+    .shutdown-percentile {
+      font-size: 0.65rem;
       color: var(--dim);
+      margin-bottom: 0.25rem;
     }
-    .shutdown-value {
-      font-size: 1.1rem;
+    .shutdown-price {
+      font-size: 0.95rem;
       font-weight: 600;
+    }
+    .shutdown-price.gold { color: var(--gold); }
+    .shutdown-miners {
+      font-size: 0.6rem;
+      color: var(--dim);
       margin-top: 0.25rem;
     }
-    .shutdown-value.highlight {
-      color: var(--gold);
+    
+    /* Shutdown Visual */
+    .shutdown-visual {
+      position: relative;
+      height: 40px;
+      background: linear-gradient(90deg, var(--red), var(--gold), var(--green));
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+    }
+    .shutdown-marker {
+      position: absolute;
+      top: -8px;
+      transform: translateX(-50%);
+      width: 3px;
+      height: 56px;
+      background: white;
+      border-radius: 2px;
+    }
+    .shutdown-marker::after {
+      content: attr(data-label);
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.65rem;
+      white-space: nowrap;
+      color: white;
+      font-weight: 500;
+    }
+    .shutdown-status {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--dim);
     }
     
     /* Footer */
     .footer {
       text-align: center;
+      padding: 1rem 0;
+      font-size: 0.7rem;
       color: var(--dim);
-      font-size: 0.8rem;
-      padding-top: 2rem;
       border-top: 1px solid var(--border);
     }
     .footer a { color: var(--cyan); text-decoration: none; }
     
-    /* Loading */
-    .loading {
-      opacity: 0.5;
-      animation: pulse 1.5s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 0.5; }
-      50% { opacity: 1; }
-    }
-    
-    /* Responsive */
-    @media (max-width: 600px) {
-      body { padding: 1rem; }
-      .current-price { font-size: 2.5rem; }
-      .card-value { font-size: 1.5rem; }
+    /* Mobile */
+    @media (max-width: 480px) {
+      .price-value { font-size: 2.25rem; }
+      .card-value { font-size: 1.25rem; }
+      .grid { gap: 0.5rem; }
+      .card { padding: 0.75rem; }
       .shutdown-grid { grid-template-columns: repeat(2, 1fr); }
+      .countdown-num { font-size: 1rem; }
+      .electricity-slider { width: 80px; }
     }
   </style>
 </head>
@@ -190,249 +336,375 @@
   <div class="container">
     <div class="header">
       <div class="logo">₿</div>
-      <div class="title">Bitcoin Dashboard</div>
+      <div class="header-text">
+        <h1>Bitcoin Dashboard</h1>
+        <p>实时价格 · ahr999 · 关机币价 · 减半倒计时</p>
+      </div>
     </div>
     
-    <div class="price-card">
-      <div class="current-price loading" id="price">$--,---</div>
-      <div class="price-change" id="change">--</div>
+    <div class="price-hero">
+      <div class="price-label">BTC / USDT</div>
+      <div class="price-value" id="price">$--,---</div>
+      <div class="price-change up" id="change">
+        <span id="change-icon">↑</span>
+        <span id="change-text">--%</span>
+      </div>
+    </div>
+    
+    <div class="chart-container">
+      <div class="chart-title">24H 价格走势</div>
+      <canvas id="priceChart"></canvas>
     </div>
     
     <div class="grid">
-      <!-- ahr999 指数 -->
       <div class="card">
-        <div class="card-title">ahr999 指数</div>
+        <div class="card-icon">📊</div>
+        <div class="card-label">ahr999 指数</div>
         <div class="card-value" id="ahr999">--</div>
         <div class="card-sub" id="ahr999-desc">加载中...</div>
-        <div class="card-indicator indicator-hold" id="ahr999-signal">--</div>
+        <div class="card-badge badge-hold" id="ahr999-badge">--</div>
       </div>
       
-      <!-- 减半倒计时 -->
+      <div class="card">
+        <div class="card-icon">📈</div>
+        <div class="card-label">市场情绪</div>
+        <div class="card-value" id="sentiment">--</div>
+        <div class="card-sub" id="sentiment-desc">综合评估</div>
+        <div class="card-badge badge-hold" id="sentiment-badge">--</div>
+      </div>
+      
       <div class="card halving-card">
-        <div class="card-title">下次减半</div>
+        <div class="card-icon">⏰</div>
+        <div class="card-label">下次减半倒计时</div>
         <div class="card-value" id="halving-date">2028年4月</div>
         <div class="countdown">
           <div class="countdown-item">
-            <div class="countdown-value" id="days">---</div>
-            <div class="countdown-label">天</div>
+            <div class="countdown-num" id="days">---</div>
+            <div class="countdown-unit">天</div>
           </div>
           <div class="countdown-item">
-            <div class="countdown-value" id="hours">--</div>
-            <div class="countdown-label">时</div>
+            <div class="countdown-num" id="hours">--</div>
+            <div class="countdown-unit">时</div>
           </div>
           <div class="countdown-item">
-            <div class="countdown-value" id="mins">--</div>
-            <div class="countdown-label">分</div>
+            <div class="countdown-num" id="mins">--</div>
+            <div class="countdown-unit">分</div>
           </div>
           <div class="countdown-item">
-            <div class="countdown-value" id="secs">--</div>
-            <div class="countdown-label">秒</div>
+            <div class="countdown-num" id="secs">--</div>
+            <div class="countdown-unit">秒</div>
           </div>
         </div>
-        <div class="card-sub">区块奖励: 3.125 → 1.5625 BTC</div>
-      </div>
-      
-      <!-- 关机币价 -->
-      <div class="card">
-        <div class="card-title">矿工关机币价</div>
-        <div class="shutdown-grid">
-          <div class="shutdown-item">
-            <div class="shutdown-label">P25</div>
-            <div class="shutdown-value" id="p25">$--</div>
-          </div>
-          <div class="shutdown-item">
-            <div class="shutdown-label">P50</div>
-            <div class="shutdown-value highlight" id="p50">$--</div>
-          </div>
-          <div class="shutdown-item">
-            <div class="shutdown-label">P75</div>
-            <div class="shutdown-value" id="p75">$--</div>
-          </div>
-          <div class="shutdown-item">
-            <div class="shutdown-label">P90</div>
-            <div class="shutdown-value" id="p90">$--</div>
-          </div>
-        </div>
-        <div class="card-sub" id="shutdown-status">当前价格高于 P90</div>
-      </div>
-      
-      <!-- 市场指标 -->
-      <div class="card">
-        <div class="card-title">市场信号</div>
-        <div class="card-value" id="signal-status">--</div>
-        <div class="card-sub" id="signal-desc">综合指标评估</div>
-        <div class="card-indicator indicator-hold" id="market-signal">加载中</div>
+        <div class="card-sub" style="margin-top:0.5rem">区块奖励: 3.125 → 1.5625 BTC</div>
       </div>
     </div>
     
+    <div class="shutdown-section">
+      <div class="shutdown-header">
+        <div class="shutdown-title">⛏️ 矿工关机币价</div>
+        <div class="electricity-control">
+          <span>电费:</span>
+          <input type="range" class="electricity-slider" id="electricity" min="0.03" max="0.12" step="0.01" value="0.06">
+          <span class="electricity-value" id="elec-value">$0.06/kWh</span>
+        </div>
+      </div>
+      
+      <div class="shutdown-grid" id="shutdown-grid">
+        <div class="shutdown-item" id="sp25">
+          <div class="shutdown-percentile">P25</div>
+          <div class="shutdown-price" id="p25">$--</div>
+          <div class="shutdown-miners">25%矿工</div>
+        </div>
+        <div class="shutdown-item active" id="sp50">
+          <div class="shutdown-percentile">P50</div>
+          <div class="shutdown-price gold" id="p50">$--</div>
+          <div class="shutdown-miners">50%矿工</div>
+        </div>
+        <div class="shutdown-item" id="sp75">
+          <div class="shutdown-percentile">P75</div>
+          <div class="shutdown-price" id="p75">$--</div>
+          <div class="shutdown-miners">75%矿工</div>
+        </div>
+        <div class="shutdown-item" id="sp90">
+          <div class="shutdown-percentile">P90</div>
+          <div class="shutdown-price" id="p90">$--</div>
+          <div class="shutdown-miners">90%矿工</div>
+        </div>
+      </div>
+      
+      <div class="shutdown-visual" id="shutdown-visual">
+        <div class="shutdown-marker" id="price-marker" data-label="当前价格"></div>
+      </div>
+      <div class="shutdown-status" id="shutdown-status">加载中...</div>
+    </div>
+    
     <div class="footer">
-      <p>数据来源: CoinGecko, Glassnode | 更新时间: <span id="update-time">--</span></p>
-      <p style="margin-top:0.5rem">Built with ❤️ by <a href="https://x.fish" target="_blank">Fish</a></p>
+      <p>数据来源: Binance API · 更新: <span id="update-time">--</span></p>
+      <p>Built with ❤️ by <a href="https://x.fish">Fish</a> · <a href="https://github.com/bitfish3/btc-dashboard">GitHub</a></p>
     </div>
   </div>
   
   <script>
     // 配置
-    const HALVING_DATE = new Date('2028-04-17T00:00:00Z'); // 预估第5次减半
-    const CURRENT_BLOCK = 880000; // 估算
-    const HALVING_BLOCK = 1050000; // 第5次减半区块
-    const BLOCKS_PER_DAY = 144;
+    const HALVING_DATE = new Date('2028-04-17T00:00:00Z');
+    let priceChart = null;
+    let priceHistory = [];
+    let currentPrice = 0;
     
-    // 关机币价估算 (基于当前难度和电费)
-    // 这些是估算值，实际需要从链上数据获取
-    const SHUTDOWN_PRICES = {
-      p25: 45000,  // 25%矿工关机
-      p50: 52000,  // 50%矿工关机 (中位数)
-      p75: 62000,  // 75%矿工关机
-      p90: 75000   // 90%矿工关机
+    // 基础电费下的关机价格 (按矿机效率分布)
+    const BASE_SHUTDOWN = {
+      p25: 35000,  // S21 Pro 等高效矿机
+      p50: 45000,  // S19 XP 等主流矿机
+      p75: 55000,  // S19j Pro 等
+      p90: 68000   // 老旧矿机
     };
     
-    // 获取BTC价格
+    // 初始化图表
+    function initChart() {
+      const ctx = document.getElementById('priceChart').getContext('2d');
+      priceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            data: [],
+            borderColor: '#f7931a',
+            backgroundColor: 'rgba(247,147,26,0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 0,
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { display: false },
+            y: { 
+              display: true,
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { 
+                color: '#7d8590',
+                font: { size: 10 },
+                callback: v => '$' + (v/1000).toFixed(0) + 'k'
+              }
+            }
+          },
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          }
+        }
+      });
+    }
+    
+    // 获取 Binance 价格
     async function fetchPrice() {
       try {
-        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true');
-        const data = await res.json();
-        const price = data.bitcoin.usd;
-        const change = data.bitcoin.usd_24h_change;
+        // 当前价格
+        const tickerRes = await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT');
+        const ticker = await tickerRes.json();
+        currentPrice = parseFloat(ticker.lastPrice);
+        const change24h = parseFloat(ticker.priceChangePercent);
         
-        document.getElementById('price').textContent = '$' + price.toLocaleString('en-US', {maximumFractionDigits: 0});
-        document.getElementById('price').classList.remove('loading');
+        document.getElementById('price').textContent = '$' + currentPrice.toLocaleString('en-US', {maximumFractionDigits: 0});
         
         const changeEl = document.getElementById('change');
-        changeEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(2) + '% (24h)';
-        changeEl.className = 'price-change ' + (change >= 0 ? 'up' : 'down');
+        const changeIcon = document.getElementById('change-icon');
+        const changeText = document.getElementById('change-text');
+        changeIcon.textContent = change24h >= 0 ? '↑' : '↓';
+        changeText.textContent = Math.abs(change24h).toFixed(2) + '% (24h)';
+        changeEl.className = 'price-change ' + (change24h >= 0 ? 'up' : 'down');
         
-        updateShutdownStatus(price);
-        updateAhr999(price);
-        updateMarketSignal(price);
+        // K线数据
+        const klineRes = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=24');
+        const klines = await klineRes.json();
         
-        document.getElementById('update-time').textContent = new Date().toLocaleString('zh-CN');
+        const labels = klines.map(k => {
+          const d = new Date(k[0]);
+          return d.getHours() + ':00';
+        });
+        const prices = klines.map(k => parseFloat(k[4]));
+        
+        priceChart.data.labels = labels;
+        priceChart.data.datasets[0].data = prices;
+        priceChart.update();
+        
+        updateAhr999(currentPrice);
+        updateSentiment(currentPrice, change24h);
+        updateShutdown(currentPrice);
+        
+        document.getElementById('update-time').textContent = new Date().toLocaleTimeString('zh-CN');
       } catch (e) {
         console.error('获取价格失败:', e);
       }
     }
     
-    // 更新关机币价状态
-    function updateShutdownStatus(price) {
-      document.getElementById('p25').textContent = '$' + SHUTDOWN_PRICES.p25.toLocaleString();
-      document.getElementById('p50').textContent = '$' + SHUTDOWN_PRICES.p50.toLocaleString();
-      document.getElementById('p75').textContent = '$' + SHUTDOWN_PRICES.p75.toLocaleString();
-      document.getElementById('p90').textContent = '$' + SHUTDOWN_PRICES.p90.toLocaleString();
-      
-      let status = '';
-      if (price < SHUTDOWN_PRICES.p25) {
-        status = '⚠️ 低于 P25 - 大量矿工亏损';
-      } else if (price < SHUTDOWN_PRICES.p50) {
-        status = '🟡 P25-P50 区间 - 部分矿工承压';
-      } else if (price < SHUTDOWN_PRICES.p75) {
-        status = '🟢 P50-P75 区间 - 多数矿工盈利';
-      } else if (price < SHUTDOWN_PRICES.p90) {
-        status = '🟢 P75-P90 区间 - 矿工利润丰厚';
-      } else {
-        status = '🚀 高于 P90 - 全网矿工盈利';
-      }
-      document.getElementById('shutdown-status').textContent = status;
-    }
-    
-    // 计算并更新 ahr999 指数
-    // ahr999 = (当前价格/200日定投成本) * (当前价格/指数增长估值)
+    // ahr999 指数计算
     function updateAhr999(price) {
-      // 简化计算：使用经验公式估算
-      // 实际应从 API 获取历史数据计算
       const daysFromGenesis = Math.floor((Date.now() - new Date('2009-01-03').getTime()) / 86400000);
+      
+      // 幂律估值
       const logPrice = Math.log10(price);
-      const expectedLogPrice = 5.84 * Math.log10(daysFromGenesis) - 17.01; // 幂律拟合
+      const expectedLogPrice = 5.84 * Math.log10(daysFromGenesis) - 17.01;
       const expectedPrice = Math.pow(10, expectedLogPrice);
       
-      // 假设200日定投成本约为当前价格的85%（牛市）到120%（熊市）
-      const dcaCost = price * 0.95; // 简化
+      // 200日定投成本估算 (简化)
+      const dcaCost = price * 0.92;
       
       const ahr999 = (price / dcaCost) * (price / expectedPrice);
       
       document.getElementById('ahr999').textContent = ahr999.toFixed(2);
       
-      let desc, signal, signalClass;
+      let desc, badge, badgeClass;
       if (ahr999 < 0.45) {
-        desc = '抄底区间 - 历史大底';
-        signal = '定投+抄底';
-        signalClass = 'indicator-buy';
+        desc = '🟢 抄底区间';
+        badge = '定投+抄底';
+        badgeClass = 'badge-buy';
       } else if (ahr999 < 1.2) {
-        desc = '定投区间 - 适合定投';
-        signal = '坚持定投';
-        signalClass = 'indicator-buy';
+        desc = '🟢 定投区间';
+        badge = '坚持定投';
+        badgeClass = 'badge-buy';
       } else if (ahr999 < 5) {
-        desc = '观望区间 - 谨慎操作';
-        signal = '持有观望';
-        signalClass = 'indicator-hold';
+        desc = '🟡 观望区间';
+        badge = '持有观望';
+        badgeClass = 'badge-hold';
       } else {
-        desc = '泡沫区间 - 考虑减仓';
-        signal = '逐步止盈';
-        signalClass = 'indicator-sell';
+        desc = '🔴 泡沫区间';
+        badge = '逐步止盈';
+        badgeClass = 'badge-sell';
       }
       
       document.getElementById('ahr999-desc').textContent = desc;
-      const signalEl = document.getElementById('ahr999-signal');
-      signalEl.textContent = signal;
-      signalEl.className = 'card-indicator ' + signalClass;
+      const badgeEl = document.getElementById('ahr999-badge');
+      badgeEl.textContent = badge;
+      badgeEl.className = 'card-badge ' + badgeClass;
     }
     
-    // 更新市场信号
-    function updateMarketSignal(price) {
-      // 综合评估
+    // 市场情绪
+    function updateSentiment(price, change24h) {
       let score = 0;
       
-      // 关机价格评分
-      if (price > SHUTDOWN_PRICES.p90) score += 2;
-      else if (price > SHUTDOWN_PRICES.p50) score += 1;
-      else if (price < SHUTDOWN_PRICES.p25) score -= 2;
+      // 价格位置
+      const shutdownPrices = getShutdownPrices();
+      if (price > shutdownPrices.p90) score += 2;
+      else if (price > shutdownPrices.p50) score += 1;
+      else if (price < shutdownPrices.p25) score -= 2;
       
-      // 距离减半评分
+      // 24h涨跌
+      if (change24h > 5) score += 1;
+      else if (change24h < -5) score -= 1;
+      
+      // 距离减半
       const daysToHalving = Math.floor((HALVING_DATE - Date.now()) / 86400000);
-      if (daysToHalving < 365) score += 1; // 减半前一年
-      if (daysToHalving < 180) score += 1; // 减半前半年
+      if (daysToHalving < 365) score += 1;
       
-      let status, desc, signal, signalClass;
+      let status, desc, badge, badgeClass;
       if (score >= 3) {
         status = '强势';
-        desc = '多项指标看涨';
-        signal = '偏多';
-        signalClass = 'indicator-buy';
+        desc = '📈 多项看涨';
+        badge = '偏多';
+        badgeClass = 'badge-buy';
       } else if (score >= 1) {
         status = '中性偏多';
-        desc = '市场状态健康';
-        signal = '持有';
-        signalClass = 'indicator-hold';
+        desc = '📊 市场健康';
+        badge = '持有';
+        badgeClass = 'badge-hold';
       } else if (score >= -1) {
         status = '中性';
-        desc = '观察市场变化';
-        signal = '观望';
-        signalClass = 'indicator-hold';
+        desc = '⏸️ 观察中';
+        badge = '观望';
+        badgeClass = 'badge-hold';
       } else {
         status = '谨慎';
-        desc = '注意风险管理';
-        signal = '防守';
-        signalClass = 'indicator-sell';
+        desc = '⚠️ 注意风险';
+        badge = '防守';
+        badgeClass = 'badge-sell';
       }
       
-      document.getElementById('signal-status').textContent = status;
-      document.getElementById('signal-desc').textContent = desc;
-      const signalEl = document.getElementById('market-signal');
-      signalEl.textContent = signal;
-      signalEl.className = 'card-indicator ' + signalClass;
+      document.getElementById('sentiment').textContent = status;
+      document.getElementById('sentiment-desc').textContent = desc;
+      const badgeEl = document.getElementById('sentiment-badge');
+      badgeEl.textContent = badge;
+      badgeEl.className = 'card-badge ' + badgeClass;
     }
     
-    // 更新减半倒计时
+    // 根据电费计算关机价格
+    function getShutdownPrices() {
+      const elec = parseFloat(document.getElementById('electricity').value);
+      const factor = elec / 0.06; // 以 $0.06 为基准
+      return {
+        p25: Math.round(BASE_SHUTDOWN.p25 * factor),
+        p50: Math.round(BASE_SHUTDOWN.p50 * factor),
+        p75: Math.round(BASE_SHUTDOWN.p75 * factor),
+        p90: Math.round(BASE_SHUTDOWN.p90 * factor)
+      };
+    }
+    
+    // 更新关机币价
+    function updateShutdown(price) {
+      const sp = getShutdownPrices();
+      
+      document.getElementById('p25').textContent = '$' + sp.p25.toLocaleString();
+      document.getElementById('p50').textContent = '$' + sp.p50.toLocaleString();
+      document.getElementById('p75').textContent = '$' + sp.p75.toLocaleString();
+      document.getElementById('p90').textContent = '$' + sp.p90.toLocaleString();
+      
+      // 更新状态样式
+      ['sp25', 'sp50', 'sp75', 'sp90'].forEach(id => {
+        document.getElementById(id).classList.remove('below', 'active');
+      });
+      
+      if (price < sp.p25) {
+        document.getElementById('sp25').classList.add('below');
+        document.getElementById('sp50').classList.add('below');
+        document.getElementById('sp75').classList.add('below');
+        document.getElementById('sp90').classList.add('below');
+      } else if (price < sp.p50) {
+        document.getElementById('sp25').classList.add('active');
+        document.getElementById('sp50').classList.add('below');
+      } else if (price < sp.p75) {
+        document.getElementById('sp50').classList.add('active');
+      } else if (price < sp.p90) {
+        document.getElementById('sp75').classList.add('active');
+      } else {
+        document.getElementById('sp90').classList.add('active');
+      }
+      
+      // 更新可视化
+      const maxPrice = sp.p90 * 1.3;
+      const minPrice = sp.p25 * 0.7;
+      const range = maxPrice - minPrice;
+      const position = Math.min(100, Math.max(0, ((price - minPrice) / range) * 100));
+      
+      const marker = document.getElementById('price-marker');
+      marker.style.left = position + '%';
+      marker.setAttribute('data-label', '$' + price.toLocaleString());
+      
+      // 状态文字
+      let status;
+      if (price < sp.p25) {
+        status = '⚠️ 低于 P25 — 大量矿工亏损关机';
+      } else if (price < sp.p50) {
+        status = '🟡 P25-P50 区间 — 部分矿工承压';
+      } else if (price < sp.p75) {
+        status = '🟢 P50-P75 区间 — 多数矿工盈利';
+      } else if (price < sp.p90) {
+        status = '🟢 P75-P90 区间 — 矿工利润丰厚';
+      } else {
+        status = '🚀 高于 P90 — 全网矿工盈利';
+      }
+      document.getElementById('shutdown-status').textContent = status;
+    }
+    
+    // 减半倒计时
     function updateCountdown() {
       const now = Date.now();
       const diff = HALVING_DATE - now;
       
-      if (diff <= 0) {
-        document.getElementById('days').textContent = '0';
-        document.getElementById('hours').textContent = '00';
-        document.getElementById('mins').textContent = '00';
-        document.getElementById('secs').textContent = '00';
-        return;
-      }
+      if (diff <= 0) return;
       
       const days = Math.floor(diff / 86400000);
       const hours = Math.floor((diff % 86400000) / 3600000);
@@ -445,13 +717,22 @@
       document.getElementById('secs').textContent = secs.toString().padStart(2, '0');
     }
     
+    // 电费滑动事件
+    document.getElementById('electricity').addEventListener('input', function() {
+      document.getElementById('elec-value').textContent = '$' + this.value + '/kWh';
+      if (currentPrice > 0) {
+        updateShutdown(currentPrice);
+      }
+    });
+    
     // 初始化
+    initChart();
     fetchPrice();
     updateCountdown();
     
     // 定时更新
-    setInterval(fetchPrice, 60000); // 每分钟更新价格
-    setInterval(updateCountdown, 1000); // 每秒更新倒计时
+    setInterval(fetchPrice, 10000); // 10秒更新价格
+    setInterval(updateCountdown, 1000);
   </script>
 </body>
 </html>
