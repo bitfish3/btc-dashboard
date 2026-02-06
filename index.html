@@ -446,17 +446,19 @@
       if (ahr) applyAhr999(ahr);
       const mvrv = cacheGet('mvrv', 86400000);
       if (mvrv) applyMvrv(mvrv);
-      const mstrC = cacheGet('mstr-mnav', 86400000);
-      if (mstrC) {
-        applyMnav('mstr-mnav', mstrC.ev);
-        document.getElementById('mstr-basic').textContent = mstrC.basic.toFixed(2) + 'x';
-        document.getElementById('mstr-ev').textContent = mstrC.ev.toFixed(2) + 'x';
-        document.getElementById('mstr-detail').textContent = 'BTC ' + mstrC.holdings.toLocaleString() + ' | $' + mstrC.price;
-      }
-      const sbetC = cacheGet('sbet-mnav', 86400000);
-      if (sbetC) { applyMnav('sbet-mnav', sbetC.mnav); document.getElementById('sbet-detail').textContent = 'ETH ' + sbetC.eth.toLocaleString() + ' | $' + (sbetC.stockPrice || sbetC.ethPrice || ''); }
-      const bmnrC = cacheGet('bmnr-mnav', 86400000);
-      if (bmnrC) { applyMnav('bmnr-mnav', bmnrC.mnav); document.getElementById('bmnr-detail').textContent = 'ETH ' + bmnrC.eth.toLocaleString() + ' | $' + bmnrC.price; }
+      try {
+        const mstrC = cacheGet('mstr-mnav', 86400000);
+        if (mstrC && mstrC.ev) {
+          applyMnav('mstr-mnav', mstrC.ev);
+          document.getElementById('mstr-basic').textContent = mstrC.basic.toFixed(2) + 'x';
+          document.getElementById('mstr-ev').textContent = mstrC.ev.toFixed(2) + 'x';
+          document.getElementById('mstr-detail').textContent = 'BTC ' + mstrC.holdings.toLocaleString() + ' | $' + mstrC.price;
+        }
+        const sbetC = cacheGet('sbet-mnav', 86400000);
+        if (sbetC && sbetC.mnav) { applyMnav('sbet-mnav', sbetC.mnav); document.getElementById('sbet-detail').textContent = 'ETH ' + sbetC.eth.toLocaleString() + ' | $' + (sbetC.stockPrice || sbetC.ethPrice || ''); }
+        const bmnrC = cacheGet('bmnr-mnav', 86400000);
+        if (bmnrC && bmnrC.mnav) { applyMnav('bmnr-mnav', bmnrC.mnav); document.getElementById('bmnr-detail').textContent = 'ETH ' + bmnrC.eth.toLocaleString() + ' | $' + bmnrC.price; }
+      } catch(e) { console.error('mNAV cache load error:', e); }
     }
 
     // 带超时的 fetch
@@ -650,10 +652,12 @@
     async function fetchMnavAll() {
       // 等 BTC 价格加载（最多等 10s）
       for (var i = 0; i < 20 && currentPrice <= 0; i++) await new Promise(r => setTimeout(r, 500));
+      console.log('[mNAV] start, btcPrice=' + currentPrice);
 
       try {
         var res = await fetchTimeout('https://looknode-proxy.corms-cushier-0l.workers.dev/mnav', 15000);
         var d = await res.json();
+        console.log('[mNAV] API response:', JSON.stringify(d).substring(0, 200));
         if (d.error) { console.error('mNAV API error:', d.error); return; }
 
         var btcPrice = currentPrice || 65000; // fallback
