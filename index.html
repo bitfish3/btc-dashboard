@@ -295,39 +295,36 @@
       else if (currentPrice <= p75) document.getElementById('pct-75').classList.add('active');
       else document.getElementById('pct-90').classList.add('active');
 
-      // 图表
+      // 图表 — 统一坐标系
       const maxSp = Math.max(...sps);
-      const xMax = Math.max(currentPrice * 1.15, maxSp * 1.1);
-      const xStep = Math.ceil(xMax / 30000) * 30000 > xMax ? Math.ceil(xMax / 30000) * 30000 : Math.ceil(xMax / 10000) * 10000;
-      const xCeil = Math.ceil(xMax / 30000) * 30000;
-      const labelW = 140; // px
+      const xCeil = Math.ceil(Math.max(currentPrice * 1.15, maxSp * 1.1) / 30000) * 30000;
 
       const bc = document.getElementById('bars-container');
       let h = '';
       data.forEach(d => {
+        // 条形宽度 = 关机价 / X轴最大值，与横轴严格对齐
         const w = (d.sp / xCeil) * 100;
         const ok = currentPrice > d.sp;
         h += '<div class="h-bar-row"><div class="h-bar-label">' + d.model +
           '</div><div class="h-bar-track"><div class="h-bar ' + (ok ? 'profit' : 'loss') +
-          '" style="width:' + w + '%"></div></div></div>';
+          '" style="width:' + w.toFixed(4) + '%"></div></div></div>';
       });
       bc.innerHTML = h;
 
-      // 动态价格竖线
-      const pricePct = (currentPrice / xCeil) * 100;
+      // 动态价格竖线 — 用同一坐标系
+      const pricePct = currentPrice / xCeil;
       const line = document.createElement('div');
       line.className = 'price-overlay';
-      // 用 calc 精确定位：label宽度 + 剩余空间的百分比
-      line.style.left = 'calc(' + labelW + 'px + (100% - ' + labelW + 'px) * ' + (pricePct / 100) + ')';
+      line.style.left = 'calc(140px + (100% - 140px) * ' + pricePct.toFixed(6) + ')';
       const tag = document.createElement('div');
       tag.className = 'price-tag';
       tag.textContent = 'BTC ' + fmt(currentPrice);
       line.appendChild(tag);
       bc.appendChild(line);
 
-      // X 轴
+      // X 轴 — 同一坐标系: $0 到 xCeil, 步长 $30k
       const xa = document.getElementById('x-axis');
-      const nSteps = Math.round(xCeil / 30000);
+      const nSteps = xCeil / 30000;
       xa.innerHTML = '';
       for (let i = 0; i <= nSteps; i++) {
         const s = document.createElement('span');
