@@ -85,6 +85,28 @@
     .fng-status { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
     .fng-desc { font-size: 12px; color: var(--dim); line-height: 1.4; }
 
+    /* 周期指标行 */
+    .cycle-row {
+      display: flex; flex-wrap: wrap; gap: 12px;
+      margin-bottom: 16px;
+    }
+    .cycle-card {
+      flex: 1; min-width: 200px; padding: 14px 18px;
+      background: var(--card); border-radius: 10px; border: 1px solid var(--border);
+    }
+    .cycle-card-title { font-size: 12px; color: var(--dim); margin-bottom: 6px; }
+    .cycle-main { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .cycle-sub { font-size: 12px; color: var(--dim); line-height: 1.5; }
+    .cycle-sub span { color: var(--text); font-weight: 500; }
+    .halving-bar {
+      width: 100%; height: 6px; background: rgba(255,255,255,0.1);
+      border-radius: 3px; margin-top: 8px; overflow: hidden;
+    }
+    .halving-fill {
+      height: 100%; background: linear-gradient(90deg, var(--gold), var(--green));
+      border-radius: 3px; transition: width 0.5s;
+    }
+
     .elec-control {
       display: flex; align-items: center; gap: 10px;
       padding: 10px 18px; background: var(--card);
@@ -256,6 +278,26 @@
         <div class="fng-title">恐惧 & 贪婪指数</div>
         <div class="fng-status" id="fng-status">--</div>
         <div class="fng-desc" id="fng-desc">加载中...</div>
+      </div>
+    </div>
+
+    <div class="cycle-row">
+      <div class="cycle-card">
+        <div class="cycle-card-title">200 周均线 (200 WMA)</div>
+        <div class="cycle-main" id="wma200-price" style="color:var(--blue)">$--,---</div>
+        <div class="cycle-sub">
+          当前价格 / 200WMA = <span id="wma200-ratio">--</span>x<br>
+          <span id="wma200-note" style="color:var(--dim)">BTC 历史上从未长期跌破 200WMA</span>
+        </div>
+      </div>
+      <div class="cycle-card">
+        <div class="cycle-card-title">⏳ 减半倒计时</div>
+        <div class="cycle-main" id="halving-days" style="color:var(--gold)">--- 天</div>
+        <div class="cycle-sub">
+          当前区块 <span id="halving-block">---</span> / 目标 <span>1,050,000</span><br>
+          奖励 3.125 → <span>1.5625 BTC</span> · 预计 <span id="halving-date">---</span>
+        </div>
+        <div class="halving-bar"><div class="halving-fill" id="halving-fill" style="width:0%"></div></div>
       </div>
     </div>
 
@@ -434,6 +476,63 @@
       }).join('');
     }
 
+    async function fetchWma200() {
+      try {
+        const res = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1w&limit=200');
+        const klines = await res.json();
+        const closes = klines.map(k => parseFloat(k[4]));
+        const wma200 = closes.reduce((a, b) => a + b, 0) / closes.length;
+
+        document.getElementById('wma200-price').textContent = '$' + Math.round(wma200).toLocaleString();
+
+        const ratio = currentPrice / wma200;
+        const ratioEl = document.getElementById('wma200-ratio');
+        ratioEl.textContent = ratio.toFixed(2);
+
+        const noteEl = document.getElementById('wma200-note');
+        if (ratio < 1) {
+          ratioEl.style.color = 'var(--red)';
+          noteEl.textContent = '⚠️ 低于 200WMA — 极端熊市信号';
+          noteEl.style.color = 'var(--red)';
+        } else if (ratio < 1.5) {
+          ratioEl.style.color = 'var(--green)';
+          noteEl.textContent = '✅ 接近 200WMA — 历史底部区间';
+          noteEl.style.color = 'var(--green)';
+        } else if (ratio < 3) {
+          ratioEl.style.color = 'var(--gold)';
+          noteEl.textContent = '📈 高于 200WMA — 正常牛市区间';
+          noteEl.style.color = 'var(--dim)';
+        } else {
+          ratioEl.style.color = 'var(--red)';
+          noteEl.textContent = '🔥 远超 200WMA — 过热信号';
+          noteEl.style.color = 'var(--red)';
+        }
+      } catch (e) { console.error('200WMA error:', e); }
+    }
+
+    async function fetchHalving() {
+      try {
+        const res = await fetch('https://mempool.space/api/blocks/tip/height');
+        const height = await res.json();
+        const halvingInterval = 210000;
+        const nextHalving = Math.ceil(height / halvingInterval) * halvingInterval;
+        const remaining = nextHalving - height;
+        const daysLeft = Math.round(remaining * 10 / (60 * 24)); // ~10min/block
+
+        const estDate = new Date(Date.now() + daysLeft * 86400000);
+        const dateStr = estDate.getFullYear() + '-' + String(estDate.getMonth()+1).padStart(2,'0') + '-' + String(estDate.getDate()).padStart(2,'0');
+
+        document.getElementById('halving-days').textContent = daysLeft + ' 天';
+        document.getElementById('halving-block').textContent = height.toLocaleString();
+        document.getElementById('halving-date').textContent = dateStr;
+
+        // 进度条: 从上次减半到下次减半
+        const prevHalving = nextHalving - halvingInterval;
+        const progress = ((height - prevHalving) / halvingInterval * 100).toFixed(1);
+        document.getElementById('halving-fill').style.width = progress + '%';
+      } catch (e) { console.error('Halving error:', e); }
+    }
+
     async function fetchFng() {
       try {
         const res = await fetch('https://api.alternative.me/fng/?limit=1');
@@ -494,10 +593,12 @@
 
     fetchData();
     fetchFng();
-    setTimeout(fetchAhr999, 2000);
+    setTimeout(() => { fetchAhr999(); fetchWma200(); fetchHalving(); }, 2000);
     setInterval(fetchData, 15000);
-    setInterval(fetchFng, 600000); // 10分钟更新
+    setInterval(fetchFng, 600000);
     setInterval(fetchAhr999, 300000);
+    setInterval(fetchWma200, 300000);
+    setInterval(fetchHalving, 600000);
   </script>
 </body>
 </html>
