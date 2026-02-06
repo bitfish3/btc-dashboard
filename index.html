@@ -166,6 +166,10 @@
         <div class="stat-label">盈利矿机</div>
         <div class="stat-value" id="profit-count"><span class="profit">--</span>/--</div>
       </div>
+      <div class="stat-item">
+        <div class="stat-label">ahr999 定投指数</div>
+        <div class="stat-value" id="ahr999" style="color:var(--green)">--</div>
+      </div>
     </div>
 
     <div class="elec-control">
@@ -287,6 +291,19 @@
       document.getElementById('p90-val').textContent = fmt(p90);
       document.getElementById('range').textContent = fmt(Math.min(...sps)) + ' ~ ' + fmt(Math.max(...sps));
       document.getElementById('profit-count').innerHTML = '<span class="profit">' + profitN + '</span>/' + data.length;
+
+      // ahr999 定投指数
+      const daysFromGenesis = Math.floor((Date.now() - new Date('2009-01-03').getTime()) / 86400000);
+      const expectedLogPrice = 5.84 * Math.log10(daysFromGenesis) - 17.01;
+      const expectedPrice = Math.pow(10, expectedLogPrice);
+      const dcaCost = currentPrice * 0.92; // 200日定投成本估算
+      const ahr999 = (currentPrice / dcaCost) * (currentPrice / expectedPrice);
+      const ahr999El = document.getElementById('ahr999');
+      ahr999El.textContent = ahr999.toFixed(2);
+      if (ahr999 < 0.45) { ahr999El.style.color = 'var(--green)'; }
+      else if (ahr999 < 1.2) { ahr999El.style.color = 'var(--green)'; }
+      else if (ahr999 < 5) { ahr999El.style.color = 'var(--gold)'; }
+      else { ahr999El.style.color = 'var(--red)'; }
 
       // 高亮百分位
       ['pct-25','pct-50','pct-75','pct-90'].forEach(id => document.getElementById(id).classList.remove('active'));
