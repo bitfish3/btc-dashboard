@@ -25,216 +25,121 @@
       min-height: 100vh;
       padding: 16px;
     }
-    .container { max-width: 1000px; margin: 0 auto; }
-    
-    /* Stats Bar */
+    .container { max-width: 960px; margin: 0 auto; }
+
     .stats-bar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-      margin-bottom: 20px;
-      padding: 16px 20px;
-      background: var(--card);
-      border-radius: 12px;
-      border: 1px solid var(--border);
+      display: flex; flex-wrap: wrap; gap: 12px;
+      margin-bottom: 16px; padding: 14px 18px;
+      background: var(--card); border-radius: 10px; border: 1px solid var(--border);
     }
-    .stat-item { flex: 1; min-width: 140px; }
-    .stat-label { font-size: 12px; color: var(--dim); margin-bottom: 4px; }
-    .stat-value { font-size: 22px; font-weight: 700; }
+    .stat-item { flex: 1; min-width: 120px; }
+    .stat-label { font-size: 11px; color: var(--dim); margin-bottom: 2px; }
+    .stat-value { font-size: 20px; font-weight: 700; }
     .stat-value.price { color: var(--gold); }
     .stat-value.hashrate { color: var(--blue); }
-    .stat-value.range { font-size: 15px; }
+    .stat-value.range { font-size: 14px; }
     .stat-value .profit { color: var(--green); }
-    .stat-value .loss { color: var(--red); }
-    
-    /* Electricity */
+
     .elec-control {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 14px 20px;
-      background: var(--card);
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      margin-bottom: 20px;
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 18px; background: var(--card);
+      border-radius: 10px; border: 1px solid var(--border); margin-bottom: 16px;
     }
-    .elec-label { font-size: 13px; color: var(--dim); }
+    .elec-label { font-size: 12px; color: var(--dim); }
     .elec-slider {
-      flex: 1; max-width: 280px; height: 6px;
+      flex: 1; max-width: 260px; height: 5px;
       -webkit-appearance: none;
       background: linear-gradient(90deg, var(--green), var(--gold), var(--red));
       border-radius: 3px; outline: none;
     }
     .elec-slider::-webkit-slider-thumb {
-      -webkit-appearance: none; width: 18px; height: 18px;
+      -webkit-appearance: none; width: 16px; height: 16px;
       background: white; border-radius: 50%; cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
     }
-    .elec-value { font-size: 16px; font-weight: 600; color: var(--gold); min-width: 90px; }
-    
-    /* Percentiles */
+    .elec-value { font-size: 15px; font-weight: 600; color: var(--gold); min-width: 85px; }
+
     .percentiles {
-      display: flex;
-      gap: 0;
-      margin-bottom: 16px;
-      background: var(--card);
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      overflow: hidden;
+      display: flex; margin-bottom: 14px;
+      background: var(--card); border-radius: 10px; border: 1px solid var(--border); overflow: hidden;
     }
-    .pct-item {
-      flex: 1;
-      padding: 12px 16px;
-      border-right: 1px solid var(--border);
-    }
+    .pct-item { flex: 1; padding: 10px 14px; border-right: 1px solid var(--border); }
     .pct-item:last-child { border-right: none; }
-    .pct-item.active {
-      background: rgba(247,147,26,0.1);
-      border: 2px solid var(--gold);
-      border-radius: 8px;
-    }
-    .pct-label { font-size: 13px; color: var(--dim); font-weight: 500; }
-    .pct-value { font-size: 20px; font-weight: 700; margin-top: 2px; }
+    .pct-item.active { background: rgba(247,147,26,0.1); border: 2px solid var(--gold); border-radius: 6px; }
+    .pct-label { font-size: 12px; color: var(--dim); }
+    .pct-value { font-size: 18px; font-weight: 700; margin-top: 1px; }
     .pct-item.active .pct-value { color: var(--gold); }
-    
-    /* Chart Section */
+
     .chart-section {
-      background: var(--card);
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      padding: 20px;
-      margin-bottom: 20px;
+      background: var(--card); border-radius: 10px;
+      border: 1px solid var(--border); padding: 16px; margin-bottom: 16px;
     }
-    .chart-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-    .chart-title { font-size: 15px; font-weight: 600; color: var(--dim); }
-    
-    /* Horizontal Bar Chart */
-    .h-chart {
-      position: relative;
-      width: 100%;
-    }
-    .h-bar-row {
-      display: flex;
-      align-items: center;
-      height: 22px;
-      margin-bottom: 2px;
-    }
+    .chart-title { font-size: 13px; color: var(--dim); margin-bottom: 10px; }
+
+    .chart-area { position: relative; }
+    .bars-container { position: relative; }
+
+    .h-bar-row { display: flex; align-items: center; height: 18px; margin-bottom: 1px; }
     .h-bar-label {
-      width: 160px;
-      flex-shrink: 0;
-      font-size: 12px;
-      color: var(--dim);
-      text-align: right;
-      padding-right: 10px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      width: 140px; flex-shrink: 0; font-size: 11px; color: var(--dim);
+      text-align: right; padding-right: 8px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .h-bar-track {
-      flex: 1;
-      height: 16px;
-      position: relative;
-    }
+    .h-bar-track { flex: 1; height: 14px; position: relative; }
     .h-bar {
-      height: 100%;
-      border-radius: 0 3px 3px 0;
-      transition: width 0.4s ease;
-      min-width: 2px;
+      height: 100%; border-radius: 0 2px 2px 0;
+      transition: width 0.3s ease; min-width: 2px;
     }
     .h-bar.profit { background: var(--green); }
     .h-bar.loss { background: var(--red); }
-    
-    /* BTC Price Vertical Line */
-    .btc-price-line {
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      width: 2px;
-      background: var(--gold);
-      z-index: 10;
-      pointer-events: none;
+
+    .price-overlay {
+      position: absolute; top: 0; bottom: 0; width: 2px;
+      background: var(--gold); z-index: 10; pointer-events: none;
     }
-    .btc-price-tag {
-      position: absolute;
-      bottom: -24px;
-      transform: translateX(-50%);
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--gold);
-      white-space: nowrap;
+    .price-tag {
+      position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%);
+      font-size: 11px; font-weight: 600; color: var(--gold); white-space: nowrap;
     }
-    
-    /* X Axis */
+
     .x-axis {
-      display: flex;
-      justify-content: space-between;
-      padding-left: 160px;
-      margin-top: 8px;
-      font-size: 11px;
-      color: var(--dim);
+      display: flex; justify-content: space-between;
+      margin-left: 140px; margin-top: 6px; padding-top: 4px;
+      border-top: 1px solid var(--border);
+      font-size: 10px; color: var(--dim);
     }
-    
-    /* Chart area container for price line */
-    .chart-area {
-      position: relative;
-      padding-bottom: 30px;
-    }
-    .bars-container {
-      position: relative;
-    }
-    
-    /* Table */
+
     .table-section {
-      background: var(--card);
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      overflow: hidden;
+      background: var(--card); border-radius: 10px;
+      border: 1px solid var(--border); overflow: hidden;
     }
-    .table-title {
-      font-size: 15px;
-      font-weight: 600;
-      padding: 14px 20px;
-      border-bottom: 1px solid var(--border);
-    }
-    .miner-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .table-title { font-size: 14px; font-weight: 600; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+    .miner-table { width: 100%; border-collapse: collapse; font-size: 12px; }
     .miner-table th {
-      text-align: left; padding: 10px 14px; color: var(--dim);
-      font-weight: 500; border-bottom: 1px solid var(--border);
-      background: rgba(0,0,0,0.2);
+      text-align: left; padding: 8px 12px; color: var(--dim);
+      font-weight: 500; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.2);
     }
-    .miner-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+    .miner-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); }
     .miner-table tr:hover { background: rgba(255,255,255,0.02); }
     .miner-table .model { font-weight: 500; }
     .miner-table .shutdown { font-weight: 600; }
     .miner-table .shutdown.profit { color: var(--green); }
     .miner-table .shutdown.loss { color: var(--red); }
     .status-badge {
-      display: inline-block; padding: 3px 10px;
-      border-radius: 12px; font-size: 11px; font-weight: 500;
+      display: inline-block; padding: 2px 8px;
+      border-radius: 10px; font-size: 10px; font-weight: 500;
     }
     .status-profit { background: rgba(76,217,100,0.15); color: var(--green); }
     .status-loss { background: rgba(231,76,95,0.15); color: var(--red); }
-    
-    .footer {
-      text-align: center; padding: 16px;
-      font-size: 12px; color: var(--dim);
-    }
+
+    .footer { text-align: center; padding: 14px; font-size: 11px; color: var(--dim); }
     .footer a { color: var(--blue); text-decoration: none; }
-    
+
     @media (max-width: 600px) {
-      .stats-bar { gap: 10px; padding: 12px; }
-      .stat-value { font-size: 16px; }
-      .pct-value { font-size: 16px; }
-      .pct-item { padding: 10px 8px; }
-      .h-bar-label { width: 110px; font-size: 10px; }
-      .x-axis { padding-left: 110px; font-size: 9px; }
-      .miner-table { font-size: 11px; }
-      .miner-table th, .miner-table td { padding: 8px; }
+      .stat-value { font-size: 15px; }
+      .pct-value { font-size: 14px; }
+      .h-bar-label { width: 100px; font-size: 9px; }
+      .x-axis { margin-left: 100px; }
     }
   </style>
 </head>
@@ -247,7 +152,7 @@
       </div>
       <div class="stat-item">
         <div class="stat-label">电费</div>
-        <div class="stat-value" id="elec-display" style="color:var(--gold)">$0.06/kWh</div>
+        <div class="stat-value" id="elec-display" style="color:var(--gold)">$0.060</div>
       </div>
       <div class="stat-item">
         <div class="stat-label">全网算力</div>
@@ -255,279 +160,200 @@
       </div>
       <div class="stat-item">
         <div class="stat-label">关机价范围</div>
-        <div class="stat-value range" id="range">$--- ~ $---</div>
+        <div class="stat-value range" id="range">--- ~ ---</div>
       </div>
       <div class="stat-item">
         <div class="stat-label">盈利矿机</div>
-        <div class="stat-value" id="profit-count"><span class="profit">--</span>/<span>--</span></div>
+        <div class="stat-value" id="profit-count"><span class="profit">--</span>/--</div>
       </div>
     </div>
-    
+
     <div class="elec-control">
-      <span class="elec-label">电费单价:</span>
+      <span class="elec-label">电费:</span>
       <input type="range" class="elec-slider" id="electricity" min="0.02" max="0.15" step="0.005" value="0.06">
       <span class="elec-value" id="elec-value">$0.060/kWh</span>
     </div>
-    
+
     <div class="percentiles">
-      <div class="pct-item" id="pct-25">
-        <div class="pct-label">P25</div>
-        <div class="pct-value" id="p25-val">$--</div>
-      </div>
-      <div class="pct-item active" id="pct-50">
-        <div class="pct-label">P50</div>
-        <div class="pct-value" id="p50-val">$--</div>
-      </div>
-      <div class="pct-item" id="pct-75">
-        <div class="pct-label">P75</div>
-        <div class="pct-value" id="p75-val">$--</div>
-      </div>
-      <div class="pct-item" id="pct-90">
-        <div class="pct-label">P90</div>
-        <div class="pct-value" id="p90-val">$--</div>
-      </div>
+      <div class="pct-item" id="pct-25"><div class="pct-label">P25</div><div class="pct-value" id="p25-val">--</div></div>
+      <div class="pct-item active" id="pct-50"><div class="pct-label">P50</div><div class="pct-value" id="p50-val">--</div></div>
+      <div class="pct-item" id="pct-75"><div class="pct-label">P75</div><div class="pct-value" id="p75-val">--</div></div>
+      <div class="pct-item" id="pct-90"><div class="pct-label">P90</div><div class="pct-value" id="p90-val">--</div></div>
     </div>
-    
+
     <div class="chart-section">
-      <div class="chart-header">
-        <div class="chart-title">矿机对比</div>
-      </div>
+      <div class="chart-title">矿机对比</div>
       <div class="chart-area">
         <div class="bars-container" id="bars-container"></div>
         <div class="x-axis" id="x-axis"></div>
       </div>
     </div>
-    
+
     <div class="table-section">
       <div class="table-title">矿机详情</div>
       <table class="miner-table">
         <thead>
-          <tr>
-            <th>矿机型号</th>
-            <th>算力</th>
-            <th>功耗</th>
-            <th>功耗比</th>
-            <th>关机价</th>
-            <th>状态</th>
-          </tr>
+          <tr><th>矿机型号</th><th>算力</th><th>功耗</th><th>功耗比</th><th>关机价</th><th>状态</th></tr>
         </thead>
         <tbody id="miner-tbody"></tbody>
       </table>
     </div>
-    
+
     <div class="footer">
-      <p>数据来源: Binance · mempool.space | Built by <a href="https://x.fish">Fish</a></p>
+      <p>数据: Binance · mempool.space | <a href="https://x.fish">Fish</a></p>
     </div>
   </div>
-  
+
   <script>
     const BLOCK_REWARD = 3.125;
-    
+
+    // 只保留 ≤29.5 W/TH 的矿机
     const MINERS = [
       { model: 'Antminer S23 Hyd.', hashrate: 380, power: 5428 },
       { model: 'Whatsminer M70', hashrate: 310, power: 5270 },
       { model: 'Antminer S21+', hashrate: 250, power: 3750 },
       { model: 'Whatsminer M66S', hashrate: 298, power: 5067 },
       { model: 'Antminer S21 Hyd.', hashrate: 335, power: 5360 },
-      { model: 'Whatsminer M63S', hashrate: 390, power: 7215 },
       { model: 'Antminer S21 Pro', hashrate: 234, power: 3510 },
       { model: 'Antminer S21', hashrate: 200, power: 3500 },
+      { model: 'Whatsminer M63S', hashrate: 390, power: 7215 },
       { model: 'Whatsminer M60S', hashrate: 186, power: 3422 },
-      { model: 'Whatsminer M56S++', hashrate: 230, power: 5290 },
       { model: 'Antminer T21', hashrate: 190, power: 3610 },
+      { model: 'Whatsminer M56S++', hashrate: 230, power: 5290 },
       { model: 'Antminer S19 XP Hyd.', hashrate: 255, power: 5304 },
       { model: 'Antminer S19 XP', hashrate: 140, power: 3010 },
       { model: 'Whatsminer M50S++', hashrate: 150, power: 3276 },
       { model: 'Whatsminer M50S+', hashrate: 140, power: 3080 },
-      { model: 'Whatsminer M50', hashrate: 118, power: 3276 },
-      { model: 'KOI Miner C16 Pro', hashrate: 116, power: 3480 },
       { model: 'Avalon A1466', hashrate: 150, power: 3350 },
+      { model: 'Whatsminer M50', hashrate: 118, power: 3276 },
       { model: 'Antminer S19j Pro+', hashrate: 122, power: 3355 },
       { model: 'Antminer S19 Pro', hashrate: 110, power: 3250 },
-      { model: 'Whatsminer M30S++', hashrate: 112, power: 3472 },
-      { model: 'Whatsminer M30S+', hashrate: 100, power: 3400 },
       { model: 'Antminer S19j Pro', hashrate: 104, power: 3068 },
-      { model: 'Whatsminer M30S', hashrate: 86, power: 3268 },
-      { model: 'Antminer S19', hashrate: 95, power: 3250 },
-      { model: 'Antminer S17', hashrate: 56, power: 2520 },
-      { model: 'Avalon A1246', hashrate: 90, power: 3420 },
-      { model: 'Antminer T17+', hashrate: 64, power: 3200 },
-      { model: 'Whatsminer M20S', hashrate: 68, power: 3360 },
-      { model: 'INNOSILICON T3+', hashrate: 52, power: 2800 },
-    ];
-    
+    ].filter(m => (m.power / m.hashrate) <= 29.5);
+
     let currentPrice = 0;
     let currentDifficulty = 0;
-    
-    function calcShutdownPrice(hashrate, power, difficulty, elecPrice) {
-      const btcPerDay = (86400 * hashrate * 1e12 * BLOCK_REWARD) / (difficulty * Math.pow(2, 32));
-      const elecCostPerDay = power * 24 / 1000 * elecPrice;
-      return elecCostPerDay / btcPerDay;
+
+    function calcShutdown(hashrate, power, diff, elec) {
+      const btcPerDay = (86400 * hashrate * 1e12 * BLOCK_REWARD) / (diff * Math.pow(2, 32));
+      return (power * 24 / 1000 * elec) / btcPerDay;
     }
-    
-    function percentile(arr, p) {
-      const sorted = [...arr].sort((a, b) => a - b);
-      const idx = (p / 100) * (sorted.length - 1);
-      const lo = Math.floor(idx), hi = Math.ceil(idx);
-      return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+
+    function pct(arr, p) {
+      const s = [...arr].sort((a, b) => a - b);
+      const i = (p / 100) * (s.length - 1);
+      const lo = Math.floor(i), hi = Math.ceil(i);
+      return lo === hi ? s[lo] : s[lo] + (s[hi] - s[lo]) * (i - lo);
     }
-    
-    function fmtPrice(v) {
-      return '$' + Math.round(v).toLocaleString();
-    }
-    
+
+    function fmt(v) { return '$' + Math.round(v).toLocaleString(); }
+
     async function fetchData() {
       try {
-        const [tickerRes, miningRes] = await Promise.all([
+        const [tRes, mRes] = await Promise.all([
           fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT'),
           fetch('https://mempool.space/api/v1/mining/hashrate/3d')
         ]);
-        const ticker = await tickerRes.json();
-        currentPrice = parseFloat(ticker.lastPrice);
-        const change24h = parseFloat(ticker.priceChangePercent);
-        
-        const mining = await miningRes.json();
-        currentDifficulty = mining.currentDifficulty;
-        const networkHashrate = (mining.currentHashrate / 1e18).toFixed(1);
-        
-        document.getElementById('btc-price').innerHTML = 
-          '$' + currentPrice.toLocaleString('en-US', {maximumFractionDigits: 0}) +
-          ' <span style="font-size:13px;color:' + (change24h >= 0 ? 'var(--green)' : 'var(--red)') + '">' +
-          (change24h >= 0 ? '↑' : '↓') + Math.abs(change24h).toFixed(2) + '%</span>';
-        document.getElementById('hashrate').textContent = networkHashrate + ' EH/s';
-        
+        const t = await tRes.json();
+        currentPrice = parseFloat(t.lastPrice);
+        const chg = parseFloat(t.priceChangePercent);
+        const m = await mRes.json();
+        currentDifficulty = m.currentDifficulty;
+
+        document.getElementById('btc-price').innerHTML =
+          '$' + currentPrice.toLocaleString('en-US', {maximumFractionDigits:0}) +
+          ' <span style="font-size:12px;color:' + (chg >= 0 ? 'var(--green)' : 'var(--red)') + '">' +
+          (chg >= 0 ? '↑' : '↓') + Math.abs(chg).toFixed(2) + '%</span>';
+        document.getElementById('hashrate').textContent = (m.currentHashrate / 1e18).toFixed(1) + ' EH/s';
         updateAll();
-      } catch (e) { console.error('数据获取失败:', e); }
+      } catch (e) { console.error(e); }
     }
-    
+
     function updateAll() {
-      const elecPrice = parseFloat(document.getElementById('electricity').value);
-      
-      const minerData = MINERS.map(m => ({
+      const elec = parseFloat(document.getElementById('electricity').value);
+      const data = MINERS.map(m => ({
         ...m,
-        efficiency: (m.power / m.hashrate).toFixed(1),
-        shutdownPrice: calcShutdownPrice(m.hashrate, m.power, currentDifficulty, elecPrice)
-      })).sort((a, b) => a.shutdownPrice - b.shutdownPrice);
-      
-      const prices = minerData.map(m => m.shutdownPrice);
-      const minP = Math.min(...prices);
-      const maxP = Math.max(...prices);
-      const profitCount = prices.filter(p => currentPrice > p).length;
-      
-      // Percentiles
-      const p25 = percentile(prices, 25);
-      const p50 = percentile(prices, 50);
-      const p75 = percentile(prices, 75);
-      const p90 = percentile(prices, 90);
-      
-      document.getElementById('p25-val').textContent = fmtPrice(p25);
-      document.getElementById('p50-val').textContent = fmtPrice(p50);
-      document.getElementById('p75-val').textContent = fmtPrice(p75);
-      document.getElementById('p90-val').textContent = fmtPrice(p90);
-      
-      // Highlight active percentile based on current price
+        eff: (m.power / m.hashrate).toFixed(1),
+        sp: calcShutdown(m.hashrate, m.power, currentDifficulty, elec)
+      })).sort((a, b) => a.sp - b.sp);
+
+      const sps = data.map(d => d.sp);
+      const profitN = sps.filter(p => currentPrice > p).length;
+      const p25 = pct(sps, 25), p50 = pct(sps, 50), p75 = pct(sps, 75), p90 = pct(sps, 90);
+
+      document.getElementById('p25-val').textContent = fmt(p25);
+      document.getElementById('p50-val').textContent = fmt(p50);
+      document.getElementById('p75-val').textContent = fmt(p75);
+      document.getElementById('p90-val').textContent = fmt(p90);
+      document.getElementById('range').textContent = fmt(Math.min(...sps)) + ' ~ ' + fmt(Math.max(...sps));
+      document.getElementById('profit-count').innerHTML = '<span class="profit">' + profitN + '</span>/' + data.length;
+
+      // 高亮百分位
       ['pct-25','pct-50','pct-75','pct-90'].forEach(id => document.getElementById(id).classList.remove('active'));
-      if (currentPrice < p25) document.getElementById('pct-25').classList.add('active');
-      else if (currentPrice < p50) document.getElementById('pct-50').classList.add('active');
-      else if (currentPrice < p75) document.getElementById('pct-50').classList.add('active');
-      else document.getElementById('pct-75').classList.add('active');
-      
-      // Stats
-      document.getElementById('range').textContent = fmtPrice(minP) + ' ~ ' + fmtPrice(maxP);
-      document.getElementById('profit-count').innerHTML = 
-        '<span class="profit">' + profitCount + '</span>/<span>' + minerData.length + '</span>';
-      
-      // Chart - horizontal bars
-      const chartMaxPrice = Math.ceil(maxP / 30000) * 30000;
-      const barsContainer = document.getElementById('bars-container');
-      
-      let html = '';
-      minerData.forEach(m => {
-        const widthPct = (m.shutdownPrice / chartMaxPrice) * 100;
-        const isProfit = currentPrice > m.shutdownPrice;
-        html += `
-          <div class="h-bar-row">
-            <div class="h-bar-label">${m.model}</div>
-            <div class="h-bar-track">
-              <div class="h-bar ${isProfit ? 'profit' : 'loss'}" style="width:${widthPct}%"></div>
-            </div>
-          </div>`;
+      if (currentPrice <= p25) document.getElementById('pct-25').classList.add('active');
+      else if (currentPrice <= p50) document.getElementById('pct-50').classList.add('active');
+      else if (currentPrice <= p75) document.getElementById('pct-75').classList.add('active');
+      else document.getElementById('pct-90').classList.add('active');
+
+      // 图表
+      const maxSp = Math.max(...sps);
+      const xMax = Math.max(currentPrice * 1.15, maxSp * 1.1);
+      const xStep = Math.ceil(xMax / 30000) * 30000 > xMax ? Math.ceil(xMax / 30000) * 30000 : Math.ceil(xMax / 10000) * 10000;
+      const xCeil = Math.ceil(xMax / 30000) * 30000;
+      const labelW = 140; // px
+
+      const bc = document.getElementById('bars-container');
+      let h = '';
+      data.forEach(d => {
+        const w = (d.sp / xCeil) * 100;
+        const ok = currentPrice > d.sp;
+        h += '<div class="h-bar-row"><div class="h-bar-label">' + d.model +
+          '</div><div class="h-bar-track"><div class="h-bar ' + (ok ? 'profit' : 'loss') +
+          '" style="width:' + w + '%"></div></div></div>';
       });
-      
-      // BTC price line (positioned within bars area)
-      const priceLinePct = Math.min((currentPrice / chartMaxPrice) * 100, 100);
-      html += `
-        <div style="position:absolute;top:0;bottom:30px;left:calc(160px + ${priceLinePct}% * (100% - 160px) / 100);width:0;pointer-events:none;z-index:10;">
-        </div>`;
-      
-      barsContainer.innerHTML = html;
-      barsContainer.style.position = 'relative';
-      
-      // Draw price line overlay
-      const tracksWidth = barsContainer.querySelector('.h-bar-track');
-      if (tracksWidth) {
-        const overlay = document.createElement('div');
-        overlay.style.cssText = `
-          position: absolute;
-          top: 0;
-          bottom: 0;
-          left: calc(160px + (100% - 160px) * ${priceLinePct / 100});
-          width: 2px;
-          background: var(--gold);
-          z-index: 10;
-          pointer-events: none;
-        `;
-        const tag = document.createElement('div');
-        tag.style.cssText = `
-          position: absolute;
-          bottom: -22px;
-          left: 50%;
-          transform: translateX(-50%);
-          font-size: 12px;
-          font-weight: 600;
-          color: var(--gold);
-          white-space: nowrap;
-        `;
-        tag.textContent = 'BTC ' + fmtPrice(currentPrice);
-        overlay.appendChild(tag);
-        barsContainer.appendChild(overlay);
+      bc.innerHTML = h;
+
+      // 动态价格竖线
+      const pricePct = (currentPrice / xCeil) * 100;
+      const line = document.createElement('div');
+      line.className = 'price-overlay';
+      // 用 calc 精确定位：label宽度 + 剩余空间的百分比
+      line.style.left = 'calc(' + labelW + 'px + (100% - ' + labelW + 'px) * ' + (pricePct / 100) + ')';
+      const tag = document.createElement('div');
+      tag.className = 'price-tag';
+      tag.textContent = 'BTC ' + fmt(currentPrice);
+      line.appendChild(tag);
+      bc.appendChild(line);
+
+      // X 轴
+      const xa = document.getElementById('x-axis');
+      const nSteps = Math.round(xCeil / 30000);
+      xa.innerHTML = '';
+      for (let i = 0; i <= nSteps; i++) {
+        const s = document.createElement('span');
+        s.textContent = '$' + (30000 * i / 1000) + 'k';
+        xa.appendChild(s);
       }
-      
-      // X axis
-      const xAxisEl = document.getElementById('x-axis');
-      const steps = Math.round(chartMaxPrice / 30000);
-      xAxisEl.innerHTML = '';
-      for (let i = 0; i <= steps; i++) {
-        const val = 30000 * i;
-        const span = document.createElement('span');
-        span.textContent = '$' + (val / 1000) + 'k';
-        xAxisEl.appendChild(span);
-      }
-      
-      // Table
-      const tbodyEl = document.getElementById('miner-tbody');
-      tbodyEl.innerHTML = minerData.map(m => {
-        const isProfit = currentPrice > m.shutdownPrice;
-        return `<tr>
-          <td class="model">${m.model}</td>
-          <td>${m.hashrate} TH/s</td>
-          <td>${m.power} W</td>
-          <td>${m.efficiency} W/TH</td>
-          <td class="shutdown ${isProfit ? 'profit' : 'loss'}">${fmtPrice(m.shutdownPrice)}</td>
-          <td><span class="status-badge ${isProfit ? 'status-profit' : 'status-loss'}">${isProfit ? '盈利' : '亏损'}</span></td>
-        </tr>`;
+
+      // 表格
+      document.getElementById('miner-tbody').innerHTML = data.map(d => {
+        const ok = currentPrice > d.sp;
+        return '<tr><td class="model">' + d.model + '</td><td>' + d.hashrate + ' TH/s</td><td>' +
+          d.power + ' W</td><td>' + d.eff + ' W/TH</td><td class="shutdown ' + (ok?'profit':'loss') + '">' +
+          fmt(d.sp) + '</td><td><span class="status-badge ' + (ok?'status-profit':'status-loss') + '">' +
+          (ok?'盈利':'亏损') + '</span></td></tr>';
       }).join('');
     }
-    
+
     document.getElementById('electricity').addEventListener('input', function() {
-      const val = parseFloat(this.value).toFixed(3);
-      document.getElementById('elec-value').textContent = '$' + val + '/kWh';
-      document.getElementById('elec-display').textContent = '$' + val + '/kWh';
+      const v = parseFloat(this.value).toFixed(3);
+      document.getElementById('elec-value').textContent = '$' + v + '/kWh';
+      document.getElementById('elec-display').textContent = '$' + v;
       if (currentPrice > 0 && currentDifficulty > 0) updateAll();
     });
-    
+
     fetchData();
-    setInterval(fetchData, 30000);
+    setInterval(fetchData, 15000);
   </script>
 </body>
 </html>
