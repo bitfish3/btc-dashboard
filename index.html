@@ -486,34 +486,44 @@
 
     async function fetchBalancedPrice() {
       try {
-        const res = await fetch('https://www.looknode.com/api/balancedPrice');
-        const json = await res.json();
-        if (json.code === 100 && json.data && json.data.length > 0) {
-          const bp = json.data[json.data.length - 1].v;
-          document.getElementById('bp-price').textContent = '$' + Math.round(bp).toLocaleString();
+        // looknode.com 没有 CORS 头，需要通过代理
+        const proxies = [
+          'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.looknode.com/api/balancedPrice'),
+          'https://corsproxy.io/?' + encodeURIComponent('https://www.looknode.com/api/balancedPrice'),
+        ];
+        let json = null;
+        for (const url of proxies) {
+          try {
+            const res = await fetch(url);
+            if (res.ok) { json = await res.json(); break; }
+          } catch (_) {}
+        }
+        if (!json || json.code !== 100 || !json.data || json.data.length === 0) return;
 
-          const ratio = currentPrice / bp;
-          const ratioEl = document.getElementById('bp-ratio');
-          ratioEl.textContent = ratio.toFixed(2);
+        const bp = json.data[json.data.length - 1].v;
+        document.getElementById('bp-price').textContent = '$' + Math.round(bp).toLocaleString();
 
-          const noteEl = document.getElementById('bp-note');
-          if (ratio < 1) {
-            ratioEl.style.color = 'var(--red)';
-            noteEl.textContent = '⚠️ 低于 Balanced Price — 极度低估，历史周期大底';
-            noteEl.style.color = 'var(--red)';
-          } else if (ratio < 1.5) {
-            ratioEl.style.color = 'var(--green)';
-            noteEl.textContent = '✅ 接近 Balanced Price — 底部区间';
-            noteEl.style.color = 'var(--green)';
-          } else if (ratio < 3) {
-            ratioEl.style.color = 'var(--text)';
-            noteEl.textContent = '📈 高于 BP — 正常估值区间';
-            noteEl.style.color = 'var(--dim)';
-          } else {
-            ratioEl.style.color = 'var(--gold)';
-            noteEl.textContent = '🔥 远超 BP — 估值偏高';
-            noteEl.style.color = 'var(--gold)';
-          }
+        const ratio = currentPrice / bp;
+        const ratioEl = document.getElementById('bp-ratio');
+        ratioEl.textContent = ratio.toFixed(2);
+
+        const noteEl = document.getElementById('bp-note');
+        if (ratio < 1) {
+          ratioEl.style.color = 'var(--red)';
+          noteEl.textContent = '⚠️ 低于 Balanced Price — 极度低估，历史周期大底';
+          noteEl.style.color = 'var(--red)';
+        } else if (ratio < 1.5) {
+          ratioEl.style.color = 'var(--green)';
+          noteEl.textContent = '✅ 接近 Balanced Price — 底部区间';
+          noteEl.style.color = 'var(--green)';
+        } else if (ratio < 3) {
+          ratioEl.style.color = 'var(--text)';
+          noteEl.textContent = '📈 高于 BP — 正常估值区间';
+          noteEl.style.color = 'var(--dim)';
+        } else {
+          ratioEl.style.color = 'var(--gold)';
+          noteEl.textContent = '🔥 远超 BP — 估值偏高';
+          noteEl.style.color = 'var(--gold)';
         }
       } catch (e) { console.error('BalancedPrice error:', e); }
     }
