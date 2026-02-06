@@ -648,17 +648,20 @@
     }
 
     async function fetchMnavAll() {
+      // 等 BTC 价格加载（最多等 10s）
+      for (var i = 0; i < 20 && currentPrice <= 0; i++) await new Promise(r => setTimeout(r, 500));
+
       try {
         var res = await fetchTimeout('https://looknode-proxy.corms-cushier-0l.workers.dev/mnav', 15000);
         var d = await res.json();
         if (d.error) { console.error('mNAV API error:', d.error); return; }
 
-        var btcPrice = currentPrice;
+        var btcPrice = currentPrice || 65000; // fallback
         var ethPrice = d.eth_price || 0;
 
         // === MSTR ===
         var m = d.mstr;
-        if (m && m.btc_holdings && m.stock_price && btcPrice > 0) {
+        if (m && m.btc_holdings && m.stock_price) {
           var btcValue = m.btc_holdings * btcPrice;
           var mcap = m.stock_price * m.shares;
           var basicMnav = mcap / btcValue;
@@ -673,16 +676,20 @@
 
         // === SBET ===
         var s = d.sbet;
-        if (s && s.eth_holdings && ethPrice > 0) {
-          var sbetNav = s.eth_holdings * ethPrice;
-          var sbetMnav = s.market_cap ? s.market_cap / sbetNav : (s.fd_mnav || 0);
-          if (sbetMnav > 0) {
+        if (s && s.eth_holdings && s.market_cap) {
+          // 优先用 market_cap / eth_nav 计算
+          if (ethPrice > 0) {
+            var sbetNav = s.eth_holdings * ethPrice;
+            var sbetMnav = s.market_cap / sbetNav;
             applyMnav('sbet-mnav', sbetMnav);
-            document.getElementById('sbet-detail').textContent = 'ETH ' + s.eth_holdings.toLocaleString() + ' | $' + (s.stock_price || ethPrice.toFixed(0));
+            document.getElementById('sbet-detail').textContent = 'ETH ' + s.eth_holdings.toLocaleString() + ' | $' + (s.stock_price || '');
             cacheSet('sbet-mnav', { mnav: sbetMnav, eth: s.eth_holdings, ethPrice: ethPrice });
+          } else if (s.fd_mnav) {
+            applyMnav('sbet-mnav', s.fd_mnav);
+            document.getElementById('sbet-detail').textContent = 'ETH ' + s.eth_holdings.toLocaleString() + ' | FD mNAV';
+            cacheSet('sbet-mnav', { mnav: s.fd_mnav, eth: s.eth_holdings, ethPrice: 0 });
           }
         } else if (s && s.fd_mnav) {
-          // Fallback: use dashboard FD mNAV
           applyMnav('sbet-mnav', s.fd_mnav);
           document.getElementById('sbet-detail').textContent = 'ETH ' + (s.eth_holdings || 0).toLocaleString() + ' | FD mNAV';
           cacheSet('sbet-mnav', { mnav: s.fd_mnav, eth: s.eth_holdings || 0, ethPrice: 0 });
@@ -861,7 +868,8 @@
     loadCache(); // 立即显示缓存数据
     fetchData();
     fetchFng();
-    setTimeout(() => { fetchAhr999(); fetchWma200(); fetchHalving(); fetchBalancedPrice(); fetchMvrv(); fetchMnavAll(); }, 2000);
+    setTimeout(() => { fetchAhr999(); fetchWma200(); fetchHalving(); fetchBalancedPrice(); fetchMvrv(); }, 2000);
+    setTimeout(fetchMnavAll, 4000); // mNAV 延后确保 BTC 价格已加载
     setInterval(fetchData, 15000);
     setInterval(fetchFng, 600000);
     setInterval(fetchAhr999, 300000);
