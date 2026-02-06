@@ -156,16 +156,22 @@
       font-size: 11px; font-weight: 600; color: var(--gold); white-space: nowrap;
     }
 
-    /* X 轴 */
+    /* X 轴 — 绝对定位对齐条形 */
     .x-axis-row {
       display: grid; grid-template-columns: 140px 1fr;
       margin-top: 6px;
     }
     .x-axis-track {
-      display: flex; justify-content: space-between;
-      font-size: 10px; color: var(--dim);
-      border-top: 1px solid var(--border); padding-top: 4px;
+      position: relative; height: 20px;
+      border-top: 1px solid var(--border);
     }
+    .x-tick {
+      position: absolute; top: 4px;
+      font-size: 10px; color: var(--dim);
+      transform: translateX(-50%);
+    }
+    .x-tick:first-child { transform: translateX(0); }
+    .x-tick:last-child { transform: translateX(-100%); }
 
     .table-section {
       background: var(--card); border-radius: 10px;
@@ -382,25 +388,25 @@
       const nSteps = xCeil / 30000;
       const cc = document.getElementById('chart-container');
 
-      // 左列：标签
       let labelsHtml = '';
-      // 右列：条形（全在一个 div 里）
       let barsHtml = '';
 
       data.forEach(d => {
         const wPct = (d.sp / xCeil * 100).toFixed(4);
         const ok = currentPrice > d.sp;
         labelsHtml += '<div class="chart-lbl">' + d.model + '</div>';
+        // 条形 = 从0到关机价的绝对位置
         barsHtml += '<div class="cbar ' + (ok ? 'profit' : 'loss') + '" style="width:' + wPct + '%"></div>';
       });
 
-      // 价格竖线 — 同一个容器里，百分比完全一致
+      // 价格竖线 — 同容器，同百分比
       const pricePct = (currentPrice / xCeil * 100).toFixed(4);
 
-      // X 轴
-      let xLabels = '';
+      // X 轴刻度 — 绝对定位，与条形完全对齐
+      let xTicksHtml = '';
       for (let i = 0; i <= nSteps; i++) {
-        xLabels += '<span>$' + (30000 * i / 1000) + 'k</span>';
+        const tickPct = (i / nSteps * 100).toFixed(4);
+        xTicksHtml += '<span class="x-tick" style="left:' + tickPct + '%">$' + (30000 * i / 1000) + 'k</span>';
       }
 
       cc.innerHTML =
@@ -415,7 +421,7 @@
         '</div>' +
         '<div class="x-axis-row">' +
           '<div></div>' +
-          '<div class="x-axis-track">' + xLabels + '</div>' +
+          '<div class="x-axis-track">' + xTicksHtml + '</div>' +
         '</div>';
 
       // 表格
