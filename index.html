@@ -291,13 +291,7 @@
       document.getElementById('range').textContent = fmt(Math.min(...sps)) + ' ~ ' + fmt(Math.max(...sps));
       document.getElementById('profit-count').innerHTML = '<span class="profit">' + profitN + '</span>/' + data.length;
 
-      // ahr999
-      const days = Math.floor((Date.now() - new Date('2009-01-03').getTime()) / 86400000);
-      const expPrice = Math.pow(10, 5.84 * Math.log10(days) - 17.01);
-      const ahr = (currentPrice / (currentPrice * 0.92)) * (currentPrice / expPrice);
-      const aEl = document.getElementById('ahr999');
-      aEl.textContent = ahr.toFixed(2);
-      aEl.style.color = ahr < 1.2 ? 'var(--green)' : ahr < 5 ? 'var(--gold)' : 'var(--red)';
+      // ahr999 由 fetchAhr999() 独立更新
 
       // 百分位高亮
       ['pct-25','pct-50','pct-75','pct-90'].forEach(id => document.getElementById(id).classList.remove('active'));
@@ -362,6 +356,29 @@
       }).join('');
     }
 
+    async function fetchAhr999() {
+      try {
+        const res = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=200');
+        const klines = await res.json();
+        const closes = klines.map(k => parseFloat(k[4]));
+        const dma200 = closes.reduce((a, b) => a + b, 0) / closes.length;
+
+        const lastTs = klines[klines.length - 1][0];
+        const genesisTs = new Date('2009-01-03').getTime();
+        const coinDays = Math.floor((lastTs - genesisTs) / 86400000);
+        const expPrice = Math.pow(10, 5.84 * Math.log10(coinDays) - 17.01);
+
+        const ahr = (currentPrice / dma200) * (currentPrice / expPrice);
+
+        const aEl = document.getElementById('ahr999');
+        aEl.textContent = ahr.toFixed(2);
+        if (ahr < 0.45) { aEl.style.color = 'var(--green)'; aEl.title = '抄底区间'; }
+        else if (ahr < 1.2) { aEl.style.color = 'var(--green)'; aEl.title = '定投区间'; }
+        else if (ahr < 5) { aEl.style.color = 'var(--gold)'; aEl.title = '观望区间'; }
+        else { aEl.style.color = 'var(--red)'; aEl.title = '泡沫区间'; }
+      } catch (e) { console.error('ahr999 error:', e); }
+    }
+
     document.getElementById('electricity').addEventListener('input', function() {
       const v = parseFloat(this.value).toFixed(3);
       document.getElementById('elec-value').textContent = '$' + v + '/kWh';
@@ -370,7 +387,9 @@
     });
 
     fetchData();
+    setTimeout(fetchAhr999, 2000); // 等价格加载后再算ahr999
     setInterval(fetchData, 15000);
+    setInterval(fetchAhr999, 300000); // 5分钟更新ahr999
   </script>
 </body>
 </html>
