@@ -370,6 +370,46 @@
 
     let currentPrice = 0, currentDifficulty = 0;
 
+    // === 缓存层 ===
+    function cacheSet(k, v) {
+      try { localStorage.setItem('btc_' + k, JSON.stringify({ t: Date.now(), v })); } catch(_) {}
+    }
+    function cacheGet(k, maxAge = 3600000) { // 默认1小时有效
+      try {
+        const d = JSON.parse(localStorage.getItem('btc_' + k));
+        if (d && (Date.now() - d.t) < maxAge) return d.v;
+      } catch(_) {}
+      return null;
+    }
+
+    // 启动时立即显示缓存数据
+    function loadCache() {
+      const p = cacheGet('price', 86400000); // 价格缓存24h
+      if (p) {
+        currentPrice = p.price;
+        document.getElementById('btc-price').innerHTML =
+          '$' + p.price.toLocaleString('en-US', {maximumFractionDigits:0}) +
+          ' <span style="font-size:12px;color:var(--dim)">缓存</span>';
+      }
+      const h = cacheGet('hashrate', 86400000);
+      if (h) {
+        currentDifficulty = h.diff;
+        document.getElementById('hashrate').textContent = h.hr + ' EH/s';
+      }
+      if (currentPrice > 0 && currentDifficulty > 0) updateAll();
+
+      const fng = cacheGet('fng', 7200000);
+      if (fng) applyFng(fng);
+      const wma = cacheGet('wma200', 86400000);
+      if (wma) applyWma200(wma);
+      const bp = cacheGet('bp', 86400000);
+      if (bp) applyBp(bp);
+      const halv = cacheGet('halving', 86400000);
+      if (halv) applyHalving(halv);
+      const ahr = cacheGet('ahr999', 86400000);
+      if (ahr) applyAhr999(ahr);
+    }
+
     // 带超时的 fetch
     function fetchTimeout(url, ms = 8000) {
       const ctrl = new AbortController();
@@ -424,11 +464,14 @@
             '$' + currentPrice.toLocaleString('en-US', {maximumFractionDigits:0}) +
             ' <span style="font-size:12px;color:' + (chg >= 0 ? 'var(--green)' : 'var(--red)') + '">' +
             (chg >= 0 ? '↑' : '↓') + Math.abs(chg).toFixed(2) + '%</span>';
+          cacheSet('price', priceData);
         }
 
         if (mRes) {
           currentDifficulty = mRes.currentDifficulty;
-          document.getElementById('hashrate').textContent = (mRes.currentHashrate / 1e18).toFixed(1) + ' EH/s';
+          const hrVal = (mRes.currentHashrate / 1e18).toFixed(1);
+          document.getElementById('hashrate').textContent = hrVal + ' EH/s';
+          cacheSet('hashrate', { diff: mRes.currentDifficulty, hr: hrVal });
         }
 
         if (currentPrice > 0 && currentDifficulty > 0) updateAll();
@@ -528,38 +571,41 @@
       }).join('');
     }
 
+    function applyBp(bp) {
+      document.getElementById('bp-price').textContent = '$' + Math.round(bp).toLocaleString();
+      if (currentPrice <= 0) return;
+      const ratio = currentPrice / bp;
+      const ratioEl = document.getElementById('bp-ratio');
+      ratioEl.textContent = ratio.toFixed(2);
+      const noteEl = document.getElementById('bp-note');
+      if (ratio < 1) { ratioEl.style.color = 'var(--red)'; noteEl.textContent = '⚠️ 低于 BP — 极度低估，历史周期大底'; noteEl.style.color = 'var(--red)'; }
+      else if (ratio < 1.5) { ratioEl.style.color = 'var(--green)'; noteEl.textContent = '✅ 接近 BP — 底部区间'; noteEl.style.color = 'var(--green)'; }
+      else if (ratio < 3) { ratioEl.style.color = 'var(--text)'; noteEl.textContent = '📈 高于 BP — 正常估值区间'; noteEl.style.color = 'var(--dim)'; }
+      else { ratioEl.style.color = 'var(--gold)'; noteEl.textContent = '🔥 远超 BP — 估值偏高'; noteEl.style.color = 'var(--gold)'; }
+    }
+
     async function fetchBalancedPrice() {
       try {
-        const res = await fetch('https://looknode-proxy.corms-cushier-0l.workers.dev/balancedPrice');
+        const res = await fetchTimeout('https://looknode-proxy.corms-cushier-0l.workers.dev/balancedPrice', 10000);
         const json = await res.json();
         if (json.code !== 100 || !json.data || json.data.length === 0) return;
-
         const bp = json.data[json.data.length - 1].v;
-        document.getElementById('bp-price').textContent = '$' + Math.round(bp).toLocaleString();
-
-        const ratio = currentPrice / bp;
-        const ratioEl = document.getElementById('bp-ratio');
-        ratioEl.textContent = ratio.toFixed(2);
-
-        const noteEl = document.getElementById('bp-note');
-        if (ratio < 1) {
-          ratioEl.style.color = 'var(--red)';
-          noteEl.textContent = '⚠️ 低于 Balanced Price — 极度低估，历史周期大底';
-          noteEl.style.color = 'var(--red)';
-        } else if (ratio < 1.5) {
-          ratioEl.style.color = 'var(--green)';
-          noteEl.textContent = '✅ 接近 Balanced Price — 底部区间';
-          noteEl.style.color = 'var(--green)';
-        } else if (ratio < 3) {
-          ratioEl.style.color = 'var(--text)';
-          noteEl.textContent = '📈 高于 BP — 正常估值区间';
-          noteEl.style.color = 'var(--dim)';
-        } else {
-          ratioEl.style.color = 'var(--gold)';
-          noteEl.textContent = '🔥 远超 BP — 估值偏高';
-          noteEl.style.color = 'var(--gold)';
-        }
+        applyBp(bp);
+        cacheSet('bp', bp);
       } catch (e) { console.error('BalancedPrice error:', e); }
+    }
+
+    function applyWma200(wma200) {
+      document.getElementById('wma200-price').textContent = '$' + Math.round(wma200).toLocaleString();
+      if (currentPrice <= 0) return;
+      const ratio = currentPrice / wma200;
+      const ratioEl = document.getElementById('wma200-ratio');
+      ratioEl.textContent = ratio.toFixed(2);
+      const noteEl = document.getElementById('wma200-note');
+      if (ratio < 1) { ratioEl.style.color = 'var(--red)'; noteEl.textContent = '⚠️ 低于 200WMA — 极端熊市信号'; noteEl.style.color = 'var(--red)'; }
+      else if (ratio < 1.5) { ratioEl.style.color = 'var(--green)'; noteEl.textContent = '✅ 接近 200WMA — 历史底部区间'; noteEl.style.color = 'var(--green)'; }
+      else if (ratio < 3) { ratioEl.style.color = 'var(--gold)'; noteEl.textContent = '📈 高于 200WMA — 正常牛市区间'; noteEl.style.color = 'var(--dim)'; }
+      else { ratioEl.style.color = 'var(--red)'; noteEl.textContent = '🔥 远超 200WMA — 过热信号'; noteEl.style.color = 'var(--red)'; }
     }
 
     async function fetchWma200() {
@@ -578,31 +624,16 @@
         }
         const wma200 = closes.reduce((a, b) => a + b, 0) / closes.length;
 
-        document.getElementById('wma200-price').textContent = '$' + Math.round(wma200).toLocaleString();
-
-        const ratio = currentPrice / wma200;
-        const ratioEl = document.getElementById('wma200-ratio');
-        ratioEl.textContent = ratio.toFixed(2);
-
-        const noteEl = document.getElementById('wma200-note');
-        if (ratio < 1) {
-          ratioEl.style.color = 'var(--red)';
-          noteEl.textContent = '⚠️ 低于 200WMA — 极端熊市信号';
-          noteEl.style.color = 'var(--red)';
-        } else if (ratio < 1.5) {
-          ratioEl.style.color = 'var(--green)';
-          noteEl.textContent = '✅ 接近 200WMA — 历史底部区间';
-          noteEl.style.color = 'var(--green)';
-        } else if (ratio < 3) {
-          ratioEl.style.color = 'var(--gold)';
-          noteEl.textContent = '📈 高于 200WMA — 正常牛市区间';
-          noteEl.style.color = 'var(--dim)';
-        } else {
-          ratioEl.style.color = 'var(--red)';
-          noteEl.textContent = '🔥 远超 200WMA — 过热信号';
-          noteEl.style.color = 'var(--red)';
-        }
+        applyWma200(wma200);
+        cacheSet('wma200', wma200);
       } catch (e) { console.error('200WMA error:', e); }
+    }
+
+    function applyHalving(d) {
+      document.getElementById('halving-days').textContent = d.days + ' 天';
+      document.getElementById('halving-block').textContent = d.height.toLocaleString();
+      document.getElementById('halving-date').textContent = d.date;
+      document.getElementById('halving-fill').style.width = d.progress + '%';
     }
 
     async function fetchHalving() {
@@ -612,20 +643,32 @@
         const halvingInterval = 210000;
         const nextHalving = Math.ceil(height / halvingInterval) * halvingInterval;
         const remaining = nextHalving - height;
-        const daysLeft = Math.round(remaining * 10 / (60 * 24)); // ~10min/block
-
+        const daysLeft = Math.round(remaining * 10 / (60 * 24));
         const estDate = new Date(Date.now() + daysLeft * 86400000);
         const dateStr = estDate.getFullYear() + '-' + String(estDate.getMonth()+1).padStart(2,'0') + '-' + String(estDate.getDate()).padStart(2,'0');
-
-        document.getElementById('halving-days').textContent = daysLeft + ' 天';
-        document.getElementById('halving-block').textContent = height.toLocaleString();
-        document.getElementById('halving-date').textContent = dateStr;
-
-        // 进度条: 从上次减半到下次减半
         const prevHalving = nextHalving - halvingInterval;
         const progress = ((height - prevHalving) / halvingInterval * 100).toFixed(1);
-        document.getElementById('halving-fill').style.width = progress + '%';
+        const d = { days: daysLeft, height, date: dateStr, progress };
+        applyHalving(d);
+        cacheSet('halving', d);
       } catch (e) { console.error('Halving error:', e); }
+    }
+
+    function applyFng(val) {
+      const angle = (val / 100) * 180 - 90;
+      document.getElementById('fng-needle').style.transform = 'rotate(' + angle + 'deg)';
+      const valEl = document.getElementById('fng-value');
+      valEl.textContent = val;
+      let label, color, desc;
+      if (val <= 20) { label = '极度恐惧'; color = 'var(--red)'; desc = '市场极度恐慌，可能是买入机会'; }
+      else if (val <= 40) { label = '恐惧'; color = '#f7931a'; desc = '市场情绪偏空，投资者谨慎'; }
+      else if (val <= 60) { label = '中性'; color = '#f0d000'; desc = '市场情绪中性，观望为主'; }
+      else if (val <= 80) { label = '贪婪'; color = 'var(--green)'; desc = '市场情绪偏多，注意风险'; }
+      else { label = '极度贪婪'; color = 'var(--green)'; desc = '市场过度乐观，考虑止盈'; }
+      valEl.style.color = color;
+      document.getElementById('fng-status').textContent = label;
+      document.getElementById('fng-status').style.color = color;
+      document.getElementById('fng-desc').textContent = desc;
     }
 
     async function fetchFng() {
@@ -633,27 +676,18 @@
         const res = await fetchTimeout('https://api.alternative.me/fng/?limit=1', 8000);
         const json = await res.json();
         const val = parseInt(json.data[0].value);
-        const cls = json.data[0].value_classification;
-
-        // 指针角度: 0=-90deg, 100=+90deg
-        const angle = (val / 100) * 180 - 90;
-        document.getElementById('fng-needle').style.transform = 'rotate(' + angle + 'deg)';
-
-        const valEl = document.getElementById('fng-value');
-        valEl.textContent = val;
-
-        let label, color, desc;
-        if (val <= 20) { label = '极度恐惧'; color = 'var(--red)'; desc = '市场极度恐慌，可能是买入机会'; }
-        else if (val <= 40) { label = '恐惧'; color = '#f7931a'; desc = '市场情绪偏空，投资者谨慎'; }
-        else if (val <= 60) { label = '中性'; color = '#f0d000'; desc = '市场情绪中性，观望为主'; }
-        else if (val <= 80) { label = '贪婪'; color = 'var(--green)'; desc = '市场情绪偏多，注意风险'; }
-        else { label = '极度贪婪'; color = 'var(--green)'; desc = '市场过度乐观，考虑止盈'; }
-
-        valEl.style.color = color;
-        document.getElementById('fng-status').textContent = label;
-        document.getElementById('fng-status').style.color = color;
-        document.getElementById('fng-desc').textContent = desc;
+        applyFng(val);
+        cacheSet('fng', val);
       } catch (e) { console.error('FnG error:', e); }
+    }
+
+    function applyAhr999(ahr) {
+      const aEl = document.getElementById('ahr999');
+      aEl.textContent = ahr.toFixed(2);
+      if (ahr < 0.45) { aEl.style.color = 'var(--green)'; aEl.title = '抄底区间'; }
+      else if (ahr < 1.2) { aEl.style.color = 'var(--green)'; aEl.title = '定投区间'; }
+      else if (ahr < 5) { aEl.style.color = 'var(--gold)'; aEl.title = '观望区间'; }
+      else { aEl.style.color = 'var(--red)'; aEl.title = '泡沫区间'; }
     }
 
     async function fetchAhr999() {
@@ -682,12 +716,8 @@
 
         const ahr = (currentPrice / dma200) * (currentPrice / expPrice);
 
-        const aEl = document.getElementById('ahr999');
-        aEl.textContent = ahr.toFixed(2);
-        if (ahr < 0.45) { aEl.style.color = 'var(--green)'; aEl.title = '抄底区间'; }
-        else if (ahr < 1.2) { aEl.style.color = 'var(--green)'; aEl.title = '定投区间'; }
-        else if (ahr < 5) { aEl.style.color = 'var(--gold)'; aEl.title = '观望区间'; }
-        else { aEl.style.color = 'var(--red)'; aEl.title = '泡沫区间'; }
+        applyAhr999(ahr);
+        cacheSet('ahr999', ahr);
       } catch (e) { console.error('ahr999 error:', e); }
     }
 
@@ -698,6 +728,7 @@
       if (currentPrice > 0 && currentDifficulty > 0) updateAll();
     });
 
+    loadCache(); // 立即显示缓存数据
     fetchData();
     fetchFng();
     setTimeout(() => { fetchAhr999(); fetchWma200(); fetchHalving(); fetchBalancedPrice(); }, 2000);
