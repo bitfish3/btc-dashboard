@@ -648,32 +648,35 @@
     }
 
     async function fetchMnavAll() {
-      // === MSTR (strategytracker) ===
+      // === MSTR (strategy.com/assets via CF Worker) ===
       try {
-        const latestRes = await fetchTimeout('https://data.strategytracker.com/latest.json', 8000);
-        const latest = await latestRes.json();
-        const lightRes = await fetchTimeout('https://data.strategytracker.com/' + latest.files.light, 10000);
-        const lightData = await lightRes.json();
-        const mstr = lightData.companies.MSTR;
-        const btcPrice = lightData.bitcoin.current_price;
-        if (mstr) {
-          const mcap = mstr.marketCap;
-          const btcValue = mstr.holdings * btcPrice;
-          const basicMnav = mcap / btcValue;
-          // Enterprise: MCap + debt + preferred / (BTC value + cash)
-          const debt = 8.2e9, preferred = 8.4e9, cash = 2.2e9;
-          const evMnav = (mcap + debt + preferred) / (btcValue + cash);
-          applyMnav('mstr-mnav', evMnav);
-          document.getElementById('mstr-basic').textContent = basicMnav.toFixed(2) + 'x';
-          document.getElementById('mstr-basic').style.color = basicMnav < 1 ? 'var(--green)' : 'var(--gold)';
-          document.getElementById('mstr-ev').textContent = evMnav.toFixed(2) + 'x';
-          document.getElementById('mstr-detail').textContent =
-            'BTC ' + Math.round(mstr.holdings).toLocaleString() + ' | $' + mstr.stockPrice;
-          cacheSet('mstr-mnav', { basic: basicMnav, ev: evMnav, holdings: mstr.holdings, price: mstr.stockPrice });
+        const [mstrRes, btcRes] = await Promise.all([
+          fetchTimeout('https://looknode-proxy.corms-cushier-0l.workers.dev/mstr', 10000),
+          fetchPrice()
+        ]);
+        const mstr = await mstrRes.json();
+        if (mstr && mstr.btc_holdings) {
+          const btcPrice = currentPrice || (btcRes && btcRes.price) || 0;
+          const btcValue = mstr.btc_holdings * btcPrice;
+          const mcap = (await fetchTimeout('https://query1.finance.yahoo.com/v8/finance/chart/MSTR?interval=1d&range=1d', 5000)
+            .then(r => r.json()).then(d => d.chart.result[0].meta.regularMarketPrice * mstr.shares).catch(() => 0));
+          const stockPrice = mcap / mstr.shares;
+
+          if (btcValue > 0 && mcap > 0) {
+            const basicMnav = mcap / btcValue;
+            const evMnav = (mcap + mstr.debt + mstr.pref) / (btcValue + mstr.cash);
+            applyMnav('mstr-mnav', evMnav);
+            document.getElementById('mstr-basic').textContent = basicMnav.toFixed(2) + 'x';
+            document.getElementById('mstr-basic').style.color = basicMnav < 1 ? 'var(--green)' : 'var(--gold)';
+            document.getElementById('mstr-ev').textContent = evMnav.toFixed(2) + 'x';
+            document.getElementById('mstr-detail').textContent =
+              'BTC ' + mstr.btc_holdings.toLocaleString() + ' | $' + stockPrice.toFixed(2);
+            cacheSet('mstr-mnav', { basic: basicMnav, ev: evMnav, holdings: mstr.btc_holdings, price: stockPrice.toFixed(2) });
+          }
         }
       } catch (e) { console.error('MSTR mNAV:', e); }
 
-      // === SBET (Nasdaq market cap + CoinGecko ETH price + dashboard ETH holdings) ===
+      // === SBET (Nasdaq market cap + dashboard ETH holdings) ===
       try {
         const [sbetDashRes, ethPriceRes] = await Promise.all([
           fetchTimeout('https://sbet-eth-dash.vercel.app/api/impact3-data', 10000),
