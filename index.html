@@ -121,41 +121,48 @@
     }
     .chart-title { font-size: 13px; color: var(--dim); margin-bottom: 10px; }
 
-    /* 图表布局: 左侧标签 + 右侧条形区域 */
-    .chart-row { display: flex; align-items: center; height: 18px; margin-bottom: 1px; }
-    .chart-label {
-      width: 140px; flex-shrink: 0; font-size: 11px; color: var(--dim);
-      text-align: right; padding-right: 8px;
+    /* 图表: CSS Grid 确保条形和价格线在同一容器 */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+    }
+    .chart-labels {
+      display: flex; flex-direction: column;
+    }
+    .chart-lbl {
+      height: 18px; display: flex; align-items: center; justify-content: flex-end;
+      font-size: 11px; color: var(--dim); padding-right: 8px;
       overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      margin-bottom: 1px;
     }
-    /* 右侧条形区域：所有条形和价格线共享这个容器 */
-    .tracks-area {
+    /* 右侧：所有条形 + 价格线共享同一个容器 */
+    .chart-bars {
       position: relative;
-      flex: 1;
     }
-    .track-bar {
-      height: 14px; margin-bottom: 1px;
-      border-radius: 0 2px 2px 0;
-      min-width: 2px;
+    .cbar {
+      height: 14px; margin-bottom: 5px;
+      border-radius: 0 2px 2px 0; min-width: 2px;
     }
-    .track-bar.profit { background: var(--green); }
-    .track-bar.loss { background: var(--red); }
+    .cbar.profit { background: var(--green); }
+    .cbar.loss { background: var(--red); }
 
-    /* 价格竖线 — 在 tracks-area 内，直接用百分比 */
-    .price-line-v {
+    /* 价格竖线 — 在 chart-bars 内，百分比直接对齐条形 */
+    .vprice {
       position: absolute; top: 0; bottom: 0; width: 2px;
       background: var(--gold); z-index: 10; pointer-events: none;
     }
-    .price-line-tag {
+    .vprice-tag {
       position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%);
       font-size: 11px; font-weight: 600; color: var(--gold); white-space: nowrap;
     }
 
     /* X 轴 */
-    .x-axis-row { display: flex; align-items: center; margin-top: 6px; }
-    .x-axis-spacer { width: 140px; flex-shrink: 0; }
+    .x-axis-row {
+      display: grid; grid-template-columns: 140px 1fr;
+      margin-top: 6px;
+    }
     .x-axis-track {
-      flex: 1; display: flex; justify-content: space-between;
+      display: flex; justify-content: space-between;
       font-size: 10px; color: var(--dim);
       border-top: 1px solid var(--border); padding-top: 4px;
     }
@@ -186,11 +193,13 @@
     .footer { text-align: center; padding: 14px; font-size: 11px; color: var(--dim); }
     .footer a { color: var(--blue); text-decoration: none; }
 
+    .chart-lbl, .x-axis-spacer { width: auto; }
+
     @media (max-width: 600px) {
       .stat-value { font-size: 15px; }
       .pct-value { font-size: 14px; }
-      .chart-label { width: 100px; font-size: 9px; }
-      .x-axis-spacer { width: 100px; }
+      .chart-grid, .x-axis-row { grid-template-columns: 100px 1fr; }
+      .chart-lbl { font-size: 9px; }
     }
   </style>
 </head>
@@ -368,25 +377,24 @@
       else if (currentPrice <= p75) document.getElementById('pct-75').classList.add('active');
       else document.getElementById('pct-90').classList.add('active');
 
-      // === 图表：严格同一坐标系 ===
+      // === 图表：CSS Grid，条形和价格线在同一个容器 ===
       const xCeil = Math.ceil(Math.max(currentPrice * 1.15, Math.max(...sps) * 1.1) / 30000) * 30000;
       const nSteps = xCeil / 30000;
       const cc = document.getElementById('chart-container');
 
-      // 构建结构：每行 = 标签 + 条形（在同一个 tracks-area 容器内）
-      // 价格线也在 tracks-area 内，用同样的百分比
-      let rows = '';
+      // 左列：标签
+      let labelsHtml = '';
+      // 右列：条形（全在一个 div 里）
+      let barsHtml = '';
+
       data.forEach(d => {
         const wPct = (d.sp / xCeil * 100).toFixed(4);
         const ok = currentPrice > d.sp;
-        rows += '<div class="chart-row">' +
-          '<div class="chart-label">' + d.model + '</div>' +
-          '<div class="tracks-area">' +
-            '<div class="track-bar ' + (ok ? 'profit' : 'loss') + '" style="width:' + wPct + '%"></div>' +
-          '</div></div>';
+        labelsHtml += '<div class="chart-lbl">' + d.model + '</div>';
+        barsHtml += '<div class="cbar ' + (ok ? 'profit' : 'loss') + '" style="width:' + wPct + '%"></div>';
       });
 
-      // 价格线：放在一个独立行里，跨越整个条形区域
+      // 价格竖线 — 同一个容器里，百分比完全一致
       const pricePct = (currentPrice / xCeil * 100).toFixed(4);
 
       // X 轴
@@ -396,21 +404,17 @@
       }
 
       cc.innerHTML =
-        '<div style="position:relative">' +
-          // 所有条形行
-          rows +
-          // 价格竖线覆盖层 — 绝对定位，left 用同样的百分比坐标
-          '<div style="position:absolute;top:0;bottom:0;left:0;right:0;pointer-events:none;">' +
-            '<div style="position:absolute;top:0;bottom:0;left:140px;right:0;">' +
-              '<div class="price-line-v" style="left:' + pricePct + '%">' +
-                '<div class="price-line-tag">BTC ' + fmt(currentPrice) + '</div>' +
-              '</div>' +
+        '<div class="chart-grid">' +
+          '<div class="chart-labels">' + labelsHtml + '</div>' +
+          '<div class="chart-bars">' +
+            barsHtml +
+            '<div class="vprice" style="left:' + pricePct + '%">' +
+              '<div class="vprice-tag">BTC ' + fmt(currentPrice) + '</div>' +
             '</div>' +
           '</div>' +
         '</div>' +
-        // X 轴
         '<div class="x-axis-row">' +
-          '<div class="x-axis-spacer"></div>' +
+          '<div></div>' +
           '<div class="x-axis-track">' + xLabels + '</div>' +
         '</div>';
 
