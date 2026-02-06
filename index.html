@@ -486,19 +486,9 @@
 
     async function fetchBalancedPrice() {
       try {
-        // looknode.com 没有 CORS 头，需要通过代理
-        const proxies = [
-          'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://www.looknode.com/api/balancedPrice'),
-          'https://corsproxy.io/?' + encodeURIComponent('https://www.looknode.com/api/balancedPrice'),
-        ];
-        let json = null;
-        for (const url of proxies) {
-          try {
-            const res = await fetch(url);
-            if (res.ok) { json = await res.json(); break; }
-          } catch (_) {}
-        }
-        if (!json || json.code !== 100 || !json.data || json.data.length === 0) return;
+        const res = await fetch('https://looknode-proxy.corms-cushier-0l.workers.dev/balancedPrice');
+        const json = await res.json();
+        if (json.code !== 100 || !json.data || json.data.length === 0) return;
 
         const bp = json.data[json.data.length - 1].v;
         document.getElementById('bp-price').textContent = '$' + Math.round(bp).toLocaleString();
