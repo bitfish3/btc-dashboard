@@ -454,7 +454,7 @@
         document.getElementById('mstr-detail').textContent = 'BTC ' + mstrC.holdings.toLocaleString() + ' | $' + mstrC.price;
       }
       const sbetC = cacheGet('sbet-mnav', 86400000);
-      if (sbetC) { applyMnav('sbet-mnav', sbetC.mnav); document.getElementById('sbet-detail').textContent = 'ETH ' + sbetC.eth.toLocaleString() + ' | $' + sbetC.ethPrice; }
+      if (sbetC) { applyMnav('sbet-mnav', sbetC.mnav); document.getElementById('sbet-detail').textContent = 'ETH ' + sbetC.eth.toLocaleString() + ' | $' + (sbetC.stockPrice || sbetC.ethPrice || ''); }
       const bmnrC = cacheGet('bmnr-mnav', 86400000);
       if (bmnrC) { applyMnav('bmnr-mnav', bmnrC.mnav); document.getElementById('bmnr-detail').textContent = 'ETH ' + bmnrC.eth.toLocaleString() + ' | $' + bmnrC.price; }
     }
@@ -683,7 +683,7 @@
             var sbetMnav = s.market_cap / sbetNav;
             applyMnav('sbet-mnav', sbetMnav);
             document.getElementById('sbet-detail').textContent = 'ETH ' + s.eth_holdings.toLocaleString() + ' | $' + (s.stock_price || '');
-            cacheSet('sbet-mnav', { mnav: sbetMnav, eth: s.eth_holdings, ethPrice: ethPrice });
+            cacheSet('sbet-mnav', { mnav: sbetMnav, eth: s.eth_holdings, stockPrice: s.stock_price || '', ethPrice: ethPrice });
           } else if (s.fd_mnav) {
             applyMnav('sbet-mnav', s.fd_mnav);
             document.getElementById('sbet-detail').textContent = 'ETH ' + s.eth_holdings.toLocaleString() + ' | FD mNAV';
