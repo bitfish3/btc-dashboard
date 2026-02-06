@@ -299,6 +299,13 @@
         </div>
       </div>
       <div class="cycle-card">
+        <div class="cycle-card-title">MVRV Ratio (市值/已实现市值)</div>
+        <div class="cycle-main" id="mvrv-value" style="color:var(--green)">--</div>
+        <div class="cycle-sub">
+          <span id="mvrv-note" style="color:var(--dim)">&lt;1 低估 · 1~3.5 正常 · &gt;3.5 过热</span>
+        </div>
+      </div>
+      <div class="cycle-card">
         <div class="cycle-card-title">⏳ 减半倒计时</div>
         <div class="cycle-main" id="halving-days" style="color:var(--gold)">--- 天</div>
         <div class="cycle-sub">
@@ -411,6 +418,8 @@
       if (halv) applyHalving(halv);
       const ahr = cacheGet('ahr999', 86400000);
       if (ahr) applyAhr999(ahr);
+      const mvrv = cacheGet('mvrv', 86400000);
+      if (mvrv) applyMvrv(mvrv);
     }
 
     // 带超时的 fetch
@@ -574,6 +583,27 @@
       }).join('');
     }
 
+    function applyMvrv(mvrv) {
+      const el = document.getElementById('mvrv-value');
+      el.textContent = mvrv.toFixed(2);
+      const noteEl = document.getElementById('mvrv-note');
+      if (mvrv < 1) { el.style.color = 'var(--green)'; noteEl.textContent = '🟢 MVRV < 1 — 低估区间，历史大底'; noteEl.style.color = 'var(--green)'; }
+      else if (mvrv < 2) { el.style.color = 'var(--green)'; noteEl.textContent = '✅ 正常偏低 — 持币/定投区间'; noteEl.style.color = 'var(--green)'; }
+      else if (mvrv < 3.5) { el.style.color = 'var(--gold)'; noteEl.textContent = '📈 正常偏高 — 注意风险'; noteEl.style.color = 'var(--dim)'; }
+      else { el.style.color = 'var(--red)'; noteEl.textContent = '🔴 MVRV > 3.5 — 过热，历史顶部区间'; noteEl.style.color = 'var(--red)'; }
+    }
+
+    async function fetchMvrv() {
+      try {
+        const res = await fetchTimeout('https://looknode-proxy.corms-cushier-0l.workers.dev/mCapRealizedRatio', 10000);
+        const json = await res.json();
+        if (json.code !== 100 || !json.data || json.data.length === 0) return;
+        const mvrv = json.data[json.data.length - 1].v;
+        applyMvrv(mvrv);
+        cacheSet('mvrv', mvrv);
+      } catch (e) { console.error('MVRV error:', e); }
+    }
+
     function applyBp(bp) {
       document.getElementById('bp-price').textContent = '$' + Math.round(bp).toLocaleString();
       if (currentPrice <= 0) return;
@@ -734,13 +764,14 @@
     loadCache(); // 立即显示缓存数据
     fetchData();
     fetchFng();
-    setTimeout(() => { fetchAhr999(); fetchWma200(); fetchHalving(); fetchBalancedPrice(); }, 2000);
+    setTimeout(() => { fetchAhr999(); fetchWma200(); fetchHalving(); fetchBalancedPrice(); fetchMvrv(); }, 2000);
     setInterval(fetchData, 15000);
     setInterval(fetchFng, 600000);
     setInterval(fetchAhr999, 300000);
     setInterval(fetchWma200, 300000);
     setInterval(fetchHalving, 600000);
     setInterval(fetchBalancedPrice, 600000);
+    setInterval(fetchMvrv, 600000);
   </script>
 </body>
 </html>
