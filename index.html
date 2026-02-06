@@ -109,8 +109,13 @@
     }
     .chart-wrapper {
       position: relative;
-      height: 300px;
+      height: 340px;
       overflow-x: auto;
+      padding-left: 70px;
+    }
+    .chart-area {
+      position: relative;
+      height: 250px;
     }
     .chart {
       display: flex;
@@ -154,27 +159,36 @@
       height: 2px;
       background: var(--gold);
       z-index: 10;
+      pointer-events: none;
+    }
+    .price-line::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 2px;
+      background: repeating-linear-gradient(90deg, var(--gold) 0, var(--gold) 8px, transparent 8px, transparent 14px);
     }
     .price-line::after {
       content: attr(data-price);
       position: absolute;
-      right: 100%;
+      left: -68px;
       top: -10px;
       background: var(--gold);
       color: #000;
       padding: 2px 8px;
       border-radius: 4px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
       white-space: nowrap;
-      margin-right: 5px;
     }
     .y-axis {
       position: absolute;
       left: 0;
       top: 0;
-      bottom: 50px;
-      width: 60px;
+      height: 250px;
+      width: 65px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -182,6 +196,7 @@
       color: var(--dim);
       text-align: right;
       padding-right: 8px;
+      z-index: 5;
     }
     
     /* Table */
@@ -276,8 +291,11 @@
     <div class="chart-section">
       <div class="chart-title">矿机关机币价分布</div>
       <div class="chart-wrapper">
-        <div class="chart" id="chart"></div>
-        <div class="price-line" id="price-line" data-price=""></div>
+        <div class="y-axis" id="y-axis"></div>
+        <div class="chart-area">
+          <div class="chart" id="chart"></div>
+          <div class="price-line" id="price-line" data-price=""></div>
+        </div>
       </div>
     </div>
     
@@ -349,15 +367,29 @@
     
     async function fetchData() {
       try {
-        const [tickerRes, diffRes] = await Promise.all([
-          fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT'),
-          fetch('https://blockchain.info/q/getdifficulty')
+        const [tickerRes, miningRes, diffAdjRes] = await Promise.all([
+          fetch('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT'),
+          fetch('https://mempool.space/api/v1/mining/hashrate/3d'),
+          fetch('https://mempool.space/api/v1/difficulty-adjustment')
         ]);
-        currentPrice = parseFloat((await tickerRes.json()).price);
-        currentDifficulty = parseFloat(await diffRes.text());
+        const ticker = await tickerRes.json();
+        currentPrice = parseFloat(ticker.lastPrice);
+        const change24h = parseFloat(ticker.priceChangePercent);
         
-        document.getElementById('btc-price').textContent = '$' + currentPrice.toLocaleString('en-US', {maximumFractionDigits: 0});
-        document.getElementById('hashrate').textContent = calcNetworkHashrate(currentDifficulty) + ' EH/s';
+        const mining = await miningRes.json();
+        currentDifficulty = mining.currentDifficulty;
+        const networkHashrate = (mining.currentHashrate / 1e18).toFixed(1);
+        
+        const diffAdj = await diffAdjRes.json();
+        const diffChange = diffAdj.difficultyChange;
+        
+        document.getElementById('btc-price').innerHTML = 
+          '$' + currentPrice.toLocaleString('en-US', {maximumFractionDigits: 0}) +
+          ' <span style="font-size:14px;color:' + (change24h >= 0 ? 'var(--green)' : 'var(--red)') + '">' +
+          (change24h >= 0 ? '↑' : '↓') + Math.abs(change24h).toFixed(2) + '%</span>';
+        document.getElementById('hashrate').innerHTML = 
+          networkHashrate + ' EH/s' +
+          ' <span style="font-size:12px;color:var(--dim)">预计调整 ' + (diffChange >= 0 ? '+' : '') + diffChange.toFixed(1) + '%</span>';
         
         updateAll();
       } catch (e) { console.error('数据获取失败:', e); }
@@ -389,16 +421,26 @@
       const chartHeight = 250;
       const maxChartPrice = maxPrice * 1.2;
       
+      // Y 轴刻度
+      const yAxisEl = document.getElementById('y-axis');
+      const steps = 5;
+      yAxisEl.innerHTML = '';
+      for (let i = steps; i >= 0; i--) {
+        const val = (maxChartPrice / steps * i);
+        const div = document.createElement('div');
+        div.textContent = '$' + (val / 1000).toFixed(0) + 'k';
+        yAxisEl.appendChild(div);
+      }
+      
       chartEl.innerHTML = minerData.map(m => {
-        const height = (m.shutdownPrice / maxChartPrice) * chartHeight;
+        const height = Math.max(2, (m.shutdownPrice / maxChartPrice) * chartHeight);
         const isProfit = currentPrice > m.shutdownPrice;
         return `
-          <div class="bar-group">
+          <div class="bar-group" title="${m.model}\n关机价: $${Math.round(m.shutdownPrice).toLocaleString()}\n算力: ${m.hashrate} TH/s\n功耗比: ${m.efficiency} W/TH">
             <div class="bar ${isProfit ? 'profit' : 'loss'}" 
-                 style="height: ${height}px" 
-                 title="${m.model}: $${Math.round(m.shutdownPrice).toLocaleString()}">
+                 style="height: ${height}px">
             </div>
-            <div class="bar-label">${m.model.replace('Antminer ', '').replace('Whatsminer ', '')}</div>
+            <div class="bar-label">${m.model.replace('Antminer ', '').replace('Whatsminer ', '').replace('Avalon ', '')}</div>
           </div>
         `;
       }).join('');
