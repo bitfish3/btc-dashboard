@@ -337,21 +337,22 @@
     <!-- mNAV 专区 -->
     <div class="cycle-row" style="margin-top:12px">
       <div class="cycle-card">
-        <div class="cycle-card-title">MSTR mNAV</div>
+        <div class="cycle-card-title">MSTR mNAV (Strategy)</div>
         <div class="cycle-main" id="mstr-mnav">--</div>
         <div class="cycle-sub">
+          Basic: <span id="mstr-basic">--</span> · EV: <span id="mstr-ev">--</span><br>
           <span id="mstr-detail" style="color:var(--dim)">BTC: -- | $--</span>
         </div>
       </div>
       <div class="cycle-card">
-        <div class="cycle-card-title">SBET FD mNAV</div>
+        <div class="cycle-card-title">SBET mNAV (SharpLink)</div>
         <div class="cycle-main" id="sbet-mnav">--</div>
         <div class="cycle-sub">
           <span id="sbet-detail" style="color:var(--dim)">ETH: -- | $--</span>
         </div>
       </div>
       <div class="cycle-card">
-        <div class="cycle-card-title">BMNR mNAV</div>
+        <div class="cycle-card-title">BMNR mNAV (BitMine)</div>
         <div class="cycle-main" id="bmnr-mnav">--</div>
         <div class="cycle-sub">
           <span id="bmnr-detail" style="color:var(--dim)">ETH: -- | $--</span>
@@ -446,11 +447,16 @@
       const mvrv = cacheGet('mvrv', 86400000);
       if (mvrv) applyMvrv(mvrv);
       const mstrC = cacheGet('mstr-mnav', 86400000);
-      if (mstrC) { applyMnav('mstr-mnav', mstrC.mnav); document.getElementById('mstr-detail').textContent = 'BTC: ' + mstrC.holdings.toLocaleString() + ' | $' + mstrC.price; }
+      if (mstrC) {
+        applyMnav('mstr-mnav', mstrC.ev);
+        document.getElementById('mstr-basic').textContent = mstrC.basic.toFixed(2) + 'x';
+        document.getElementById('mstr-ev').textContent = mstrC.ev.toFixed(2) + 'x';
+        document.getElementById('mstr-detail').textContent = 'BTC ' + mstrC.holdings.toLocaleString() + ' | $' + mstrC.price;
+      }
       const sbetC = cacheGet('sbet-mnav', 86400000);
-      if (sbetC) { applyMnav('sbet-mnav', sbetC.mnav); document.getElementById('sbet-detail').textContent = 'ETH: ' + sbetC.eth.toLocaleString() + ' | FD mNAV'; }
+      if (sbetC) { applyMnav('sbet-mnav', sbetC.mnav); document.getElementById('sbet-detail').textContent = 'ETH ' + sbetC.eth.toLocaleString() + ' | $' + sbetC.ethPrice; }
       const bmnrC = cacheGet('bmnr-mnav', 86400000);
-      if (bmnrC) { applyMnav('bmnr-mnav', bmnrC.mnav); document.getElementById('bmnr-detail').textContent = 'ETH: ' + bmnrC.eth.toLocaleString() + ' | $' + bmnrC.price; }
+      if (bmnrC) { applyMnav('bmnr-mnav', bmnrC.mnav); document.getElementById('bmnr-detail').textContent = 'ETH ' + bmnrC.eth.toLocaleString() + ' | $' + bmnrC.price; }
     }
 
     // 带超时的 fetch
@@ -635,7 +641,7 @@
       } catch (e) { console.error('MVRV error:', e); }
     }
 
-    function applyMnav(id, val, color) {
+    function applyMnav(id, val) {
       const el = document.getElementById(id);
       el.textContent = val.toFixed(2) + 'x';
       el.style.color = val < 1 ? 'var(--green)' : val < 2 ? 'var(--gold)' : 'var(--red)';
@@ -649,26 +655,54 @@
         const lightRes = await fetchTimeout('https://data.strategytracker.com/' + latest.files.light, 10000);
         const lightData = await lightRes.json();
         const mstr = lightData.companies.MSTR;
+        const btcPrice = lightData.bitcoin.current_price;
         if (mstr) {
-          const mnav = 1 + mstr.navPremium;
-          applyMnav('mstr-mnav', mnav);
+          const mcap = mstr.marketCap;
+          const btcValue = mstr.holdings * btcPrice;
+          const basicMnav = mcap / btcValue;
+          // Enterprise: MCap + debt + preferred / (BTC value + cash)
+          const debt = 8.2e9, preferred = 8.4e9, cash = 2.2e9;
+          const evMnav = (mcap + debt + preferred) / (btcValue + cash);
+          applyMnav('mstr-mnav', evMnav);
+          document.getElementById('mstr-basic').textContent = basicMnav.toFixed(2) + 'x';
+          document.getElementById('mstr-basic').style.color = basicMnav < 1 ? 'var(--green)' : 'var(--gold)';
+          document.getElementById('mstr-ev').textContent = evMnav.toFixed(2) + 'x';
           document.getElementById('mstr-detail').textContent =
-            'BTC: ' + mstr.holdings.toLocaleString() + ' | $' + mstr.stockPrice;
-          cacheSet('mstr-mnav', { mnav, holdings: mstr.holdings, price: mstr.stockPrice });
+            'BTC ' + Math.round(mstr.holdings).toLocaleString() + ' | $' + mstr.stockPrice;
+          cacheSet('mstr-mnav', { basic: basicMnav, ev: evMnav, holdings: mstr.holdings, price: mstr.stockPrice });
         }
       } catch (e) { console.error('MSTR mNAV:', e); }
 
-      // === SBET (dashboard API) ===
+      // === SBET (Nasdaq market cap + CoinGecko ETH price + dashboard ETH holdings) ===
       try {
-        const res = await fetchTimeout('https://sbet-eth-dash.vercel.app/api/impact3-data', 10000);
-        const d = await res.json();
-        const fdRaw = d.fdmnav[d.fdmnav.length - 1]['Fully Diluted mNAV'];
-        const mnav = parseFloat(fdRaw.replace('x', ''));
-        const eth = d.total_eth_holdings[d.total_eth_holdings.length - 1]['Total ETH Holdings'];
-        applyMnav('sbet-mnav', mnav);
-        document.getElementById('sbet-detail').textContent =
-          'ETH: ' + eth.toLocaleString() + ' | FD mNAV';
-        cacheSet('sbet-mnav', { mnav, eth });
+        const [sbetDashRes, ethPriceRes] = await Promise.all([
+          fetchTimeout('https://sbet-eth-dash.vercel.app/api/impact3-data', 10000),
+          fetchTimeout('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd', 8000),
+        ]);
+        const sbetDash = await sbetDashRes.json();
+        const ethPrice = (await ethPriceRes.json()).ethereum.usd;
+        const sbet_eth = sbetDash.total_eth_holdings[sbetDash.total_eth_holdings.length - 1]['Total ETH Holdings'];
+        const sbet_nav = sbet_eth * ethPrice;
+
+        // Try Nasdaq for live market cap, fallback to dashboard FD mNAV
+        let sbet_mnav = 0;
+        try {
+          const nasdaqRes = await fetchTimeout('https://api.nasdaq.com/api/quote/SBET/summary?assetclass=stocks', 5000);
+          const nasdaqData = await nasdaqRes.json();
+          const mcapStr = nasdaqData.data.summaryData.MarketCap.value;
+          const sbet_mcap = parseFloat(mcapStr.replace(/[,$]/g, ''));
+          sbet_mnav = sbet_mcap / sbet_nav;
+        } catch (_) {
+          // Fallback: dashboard FD mNAV
+          const fdStr = sbetDash.fdmnav[sbetDash.fdmnav.length - 1]['Fully Diluted mNAV'];
+          sbet_mnav = parseFloat(fdStr.replace('x', ''));
+        }
+        if (sbet_mnav > 0) {
+          applyMnav('sbet-mnav', sbet_mnav);
+          document.getElementById('sbet-detail').textContent =
+            'ETH ' + sbet_eth.toLocaleString() + ' | $' + ethPrice.toLocaleString();
+          cacheSet('sbet-mnav', { mnav: sbet_mnav, eth: sbet_eth, ethPrice });
+        }
       } catch (e) { console.error('SBET mNAV:', e); }
 
       // === BMNR (CoinGecko + Yahoo) ===
@@ -677,7 +711,6 @@
           fetchTimeout('https://api.coingecko.com/api/v3/companies/public_treasury/ethereum', 10000),
           fetchTimeout('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd', 8000),
           fetchTimeout('https://query1.finance.yahoo.com/v8/finance/chart/BMNR?interval=1d&range=1d', 8000)
-            .catch(() => fetchTimeout('https://www.okx.com/api/v5/market/ticker?instId=BMNR-USDT', 5000).catch(() => null))
         ]);
         const ethCompanies = await ethTreasuryRes.json();
         const ethPrice = (await ethPriceRes.json()).ethereum.usd;
@@ -685,18 +718,16 @@
         for (const c of ethCompanies.companies) {
           if (c.name.toLowerCase().includes('bitmine')) { bmnrEth = c.total_holdings; break; }
         }
-        let bmnrPrice = 0;
-        if (bmnrRes) {
-          const bd = await bmnrRes.json();
-          bmnrPrice = bd.chart ? bd.chart.result[0].meta.regularMarketPrice : 0;
-        }
+        const bd = await bmnrRes.json();
+        const bmnrPrice = bd.chart.result[0].meta.regularMarketPrice;
         const bmnrShares = 478850823;
+        const bmnrMcap = bmnrPrice * bmnrShares;
         const bmnrNav = bmnrEth * ethPrice;
-        const mnav = bmnrNav > 0 ? (bmnrPrice * bmnrShares) / bmnrNav : 0;
+        const mnav = bmnrNav > 0 ? bmnrMcap / bmnrNav : 0;
         if (mnav > 0) {
           applyMnav('bmnr-mnav', mnav);
           document.getElementById('bmnr-detail').textContent =
-            'ETH: ' + bmnrEth.toLocaleString() + ' | $' + bmnrPrice;
+            'ETH ' + bmnrEth.toLocaleString() + ' | $' + bmnrPrice;
           cacheSet('bmnr-mnav', { mnav, eth: bmnrEth, price: bmnrPrice });
         }
       } catch (e) { console.error('BMNR mNAV:', e); }
