@@ -291,6 +291,14 @@
         </div>
       </div>
       <div class="cycle-card">
+        <div class="cycle-card-title">Balanced Price (均衡价格)</div>
+        <div class="cycle-main" id="bp-price" style="color:var(--green)">$--,---</div>
+        <div class="cycle-sub">
+          当前价格 / BP = <span id="bp-ratio">--</span>x<br>
+          <span id="bp-note" style="color:var(--dim)">已实现价格 − 转移价格，历史周期底部参考</span>
+        </div>
+      </div>
+      <div class="cycle-card">
         <div class="cycle-card-title">⏳ 减半倒计时</div>
         <div class="cycle-main" id="halving-days" style="color:var(--gold)">--- 天</div>
         <div class="cycle-sub">
@@ -476,6 +484,40 @@
       }).join('');
     }
 
+    async function fetchBalancedPrice() {
+      try {
+        const res = await fetch('https://www.looknode.com/api/balancedPrice');
+        const json = await res.json();
+        if (json.code === 100 && json.data && json.data.length > 0) {
+          const bp = json.data[json.data.length - 1].v;
+          document.getElementById('bp-price').textContent = '$' + Math.round(bp).toLocaleString();
+
+          const ratio = currentPrice / bp;
+          const ratioEl = document.getElementById('bp-ratio');
+          ratioEl.textContent = ratio.toFixed(2);
+
+          const noteEl = document.getElementById('bp-note');
+          if (ratio < 1) {
+            ratioEl.style.color = 'var(--red)';
+            noteEl.textContent = '⚠️ 低于 Balanced Price — 极度低估，历史周期大底';
+            noteEl.style.color = 'var(--red)';
+          } else if (ratio < 1.5) {
+            ratioEl.style.color = 'var(--green)';
+            noteEl.textContent = '✅ 接近 Balanced Price — 底部区间';
+            noteEl.style.color = 'var(--green)';
+          } else if (ratio < 3) {
+            ratioEl.style.color = 'var(--text)';
+            noteEl.textContent = '📈 高于 BP — 正常估值区间';
+            noteEl.style.color = 'var(--dim)';
+          } else {
+            ratioEl.style.color = 'var(--gold)';
+            noteEl.textContent = '🔥 远超 BP — 估值偏高';
+            noteEl.style.color = 'var(--gold)';
+          }
+        }
+      } catch (e) { console.error('BalancedPrice error:', e); }
+    }
+
     async function fetchWma200() {
       try {
         const res = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1w&limit=200');
@@ -593,12 +635,13 @@
 
     fetchData();
     fetchFng();
-    setTimeout(() => { fetchAhr999(); fetchWma200(); fetchHalving(); }, 2000);
+    setTimeout(() => { fetchAhr999(); fetchWma200(); fetchHalving(); fetchBalancedPrice(); }, 2000);
     setInterval(fetchData, 15000);
     setInterval(fetchFng, 600000);
     setInterval(fetchAhr999, 300000);
     setInterval(fetchWma200, 300000);
     setInterval(fetchHalving, 600000);
+    setInterval(fetchBalancedPrice, 600000);
   </script>
 </body>
 </html>
