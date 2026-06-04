@@ -233,11 +233,37 @@
 
     .chart-lbl, .x-axis-spacer { width: auto; }
 
+    /* 区块标题 */
+    .section-head {
+      font-size: 13px; color: var(--dim); margin: 4px 2px 8px;
+      display: flex; justify-content: space-between; align-items: baseline;
+    }
+    .section-head .sh-title { font-weight: 600; color: var(--text); }
+    .section-head a { color: var(--blue); text-decoration: none; font-size: 11px; }
+
+    /* 跌破概率 6 档 */
+    .prob-row {
+      display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;
+    }
+    .prob-tile {
+      flex: 1; min-width: 92px; padding: 11px 8px; text-align: center;
+      background: var(--card); border: 1px solid var(--border); border-radius: 9px;
+      transition: border-color .3s;
+    }
+    .prob-strike { font-size: 11px; color: var(--dim); margin-bottom: 4px; }
+    .prob-val { font-size: 20px; font-weight: 700; }
+
     @media (max-width: 600px) {
       .stat-value { font-size: 15px; }
       .pct-value { font-size: 14px; }
       .chart-grid, .x-axis-row { grid-template-columns: 100px 1fr; }
       .chart-lbl { font-size: 9px; }
+      .prob-tile { min-width: 30%; }
+      /* 移动端：周期卡片两列并排，提高信息密度 */
+      .cycle-card { min-width: calc(50% - 6px); flex-basis: calc(50% - 6px); padding: 12px; }
+      .cycle-card-title { font-size: 11px; }
+      .cycle-main { font-size: 18px; }
+      .cycle-sub { font-size: 11px; }
     }
   </style>
 
@@ -343,6 +369,20 @@
       </div>
     </div>
 
+    <!-- 跌破概率 (Polymarket + Kalshi 实时) -->
+    <div class="section-head">
+      <span class="sh-title">📉 2026 跌破概率</span>
+      <a href="https://probs.fuckbtc.com/?lang=zh" target="_blank">完整分布 →</a>
+    </div>
+    <div class="prob-row" id="prob-row">
+      <div class="prob-tile" id="prob-55000"><div class="prob-strike">跌破 $55k</div><div class="prob-val">--</div></div>
+      <div class="prob-tile" id="prob-50000"><div class="prob-strike">跌破 $50k</div><div class="prob-val">--</div></div>
+      <div class="prob-tile" id="prob-45000"><div class="prob-strike">跌破 $45k</div><div class="prob-val">--</div></div>
+      <div class="prob-tile" id="prob-40000"><div class="prob-strike">跌破 $40k</div><div class="prob-val">--</div></div>
+      <div class="prob-tile" id="prob-35000"><div class="prob-strike">跌破 $35k</div><div class="prob-val">--</div></div>
+      <div class="prob-tile" id="prob-30000"><div class="prob-strike">跌破 $30k</div><div class="prob-val">--</div></div>
+    </div>
+
     <!-- mNAV 专区 -->
     <div class="cycle-row" style="margin-top:12px">
       <div class="cycle-card">
@@ -354,17 +394,40 @@
         </div>
       </div>
       <div class="cycle-card">
-        <div class="cycle-card-title">SBET mNAV (SharpLink)</div>
-        <div class="cycle-main" id="sbet-mnav">--</div>
-        <div class="cycle-sub">
-          <span id="sbet-detail" style="color:var(--dim)">ETH: -- | $--</span>
-        </div>
-      </div>
-      <div class="cycle-card">
         <div class="cycle-card-title">BMNR mNAV (BitMine)</div>
         <div class="cycle-main" id="bmnr-mnav">--</div>
         <div class="cycle-sub">
           <span id="bmnr-detail" style="color:var(--dim)">ETH: -- | $--</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MSTR STRC 飞轮 -->
+    <div class="section-head" style="margin-top:4px">
+      <span class="sh-title">🎡 MSTR STRC 飞轮</span>
+      <a href="https://mstr.fuckbtc.com/" target="_blank">监控盘 →</a>
+    </div>
+    <div class="cycle-row">
+      <div class="cycle-card">
+        <div class="cycle-card-title">STRC 价格 (par $100)</div>
+        <div class="cycle-main" id="strc-price" style="color:var(--gold)">$--</div>
+        <div class="cycle-sub">
+          <span id="strc-price-note" style="color:var(--dim)">$95 观察 · $92 加仓 · $85 激进 · $75 危机</span>
+        </div>
+      </div>
+      <div class="cycle-card">
+        <div class="cycle-card-title">STRC ATM 剩余额度</div>
+        <div class="cycle-main" id="strc-atm" style="color:var(--blue)">$--</div>
+        <div class="cycle-sub">
+          增发水管余量，越少越依赖二级<br>
+          <span style="color:var(--dim)">发行量 <span id="strc-issued" style="color:var(--text)">$--</span> · 授权 $21B</span>
+        </div>
+      </div>
+      <div class="cycle-card">
+        <div class="cycle-card-title">🌡️ 飞轮健康度</div>
+        <div class="cycle-main" id="strc-score" style="color:var(--gold)">--/100</div>
+        <div class="cycle-sub">
+          <span id="strc-reasons" style="color:var(--dim)">加载中...</span>
         </div>
       </div>
     </div>
@@ -398,7 +461,7 @@
     </div>
 
     <div class="footer">
-      <p>数据: Binance · mempool.space | <a href="https://x.com/bitfish" target="_blank">Fish</a></p>
+      <p>数据: Binance · mempool.space · Polymarket/Kalshi · STRC 飞轮 | <a href="https://x.com/bitfish" target="_blank">Fish</a></p>
     </div>
   </div>
 
@@ -481,11 +544,13 @@
           document.getElementById('mstr-ev').textContent = mstrC.ev.toFixed(2) + 'x';
           document.getElementById('mstr-detail').textContent = 'BTC ' + mstrC.holdings.toLocaleString() + ' | $' + mstrC.price;
         }
-        const sbetC = cacheGet('sbet-mnav', 86400000);
-        if (sbetC && sbetC.mnav) { applyMnav('sbet-mnav', sbetC.mnav); document.getElementById('sbet-detail').textContent = 'ETH ' + sbetC.eth.toLocaleString() + ' | $' + (sbetC.stockPrice || sbetC.ethPrice || ''); }
         const bmnrC = cacheGet('bmnr-mnav', 86400000);
         if (bmnrC && bmnrC.mnav) { applyMnav('bmnr-mnav', bmnrC.mnav); document.getElementById('bmnr-detail').textContent = 'ETH ' + bmnrC.eth.toLocaleString() + ' | $' + bmnrC.price; }
       } catch(e) { console.error('mNAV cache load error:', e); }
+      const probsC = cacheGet('probs', 3600000);
+      if (probsC) applyProbs(probsC);
+      const strcC = cacheGet('strc', 86400000);
+      if (strcC) applyStrc(strcC.fw, strcC.iss);
     }
 
     // 带超时的 fetch
@@ -705,27 +770,6 @@
           cacheSet('mstr-mnav', { basic: basicMnav, ev: evMnav, holdings: m.btc_holdings, price: m.stock_price });
         }
 
-        // === SBET ===
-        var s = d.sbet;
-        if (s && s.eth_holdings && s.market_cap) {
-          // 优先用 market_cap / eth_nav 计算
-          if (ethPrice > 0) {
-            var sbetNav = s.eth_holdings * ethPrice;
-            var sbetMnav = s.market_cap / sbetNav;
-            applyMnav('sbet-mnav', sbetMnav);
-            document.getElementById('sbet-detail').textContent = 'ETH ' + s.eth_holdings.toLocaleString() + ' | $' + (s.stock_price || '');
-            cacheSet('sbet-mnav', { mnav: sbetMnav, eth: s.eth_holdings, stockPrice: s.stock_price || '', ethPrice: ethPrice });
-          } else if (s.fd_mnav) {
-            applyMnav('sbet-mnav', s.fd_mnav);
-            document.getElementById('sbet-detail').textContent = 'ETH ' + s.eth_holdings.toLocaleString() + ' | FD mNAV';
-            cacheSet('sbet-mnav', { mnav: s.fd_mnav, eth: s.eth_holdings, ethPrice: 0 });
-          }
-        } else if (s && s.fd_mnav) {
-          applyMnav('sbet-mnav', s.fd_mnav);
-          document.getElementById('sbet-detail').textContent = 'ETH ' + (s.eth_holdings || 0).toLocaleString() + ' | FD mNAV';
-          cacheSet('sbet-mnav', { mnav: s.fd_mnav, eth: s.eth_holdings || 0, ethPrice: 0 });
-        }
-
         // === BMNR ===
         var b = d.bmnr;
         if (b && b.eth_holdings && b.stock_price && ethPrice > 0) {
@@ -889,6 +933,75 @@
       } catch (e) { console.error('ahr999 error:', e); }
     }
 
+    // === 跌破概率 (probs.fuckbtc.com /api/data) ===
+    const PROB_STRIKES = [55000, 50000, 45000, 40000, 35000, 30000];
+    function applyProbs(map) {
+      PROB_STRIKES.forEach(k => {
+        const tile = document.getElementById('prob-' + k);
+        if (!tile) return;
+        const valEl = tile.querySelector('.prob-val');
+        const p = map[k];
+        if (p == null) { valEl.textContent = '--'; return; }
+        valEl.textContent = (p * 100).toFixed(1) + '%';
+        const col = p >= 0.5 ? 'var(--red)' : p >= 0.25 ? 'var(--gold)' : 'var(--green)';
+        valEl.style.color = col;
+        tile.style.borderColor = p >= 0.5 ? 'var(--red)' : p >= 0.25 ? 'var(--gold)' : 'var(--border)';
+      });
+    }
+    async function fetchProbs() {
+      try {
+        const res = await fetchTimeout('https://probs.fuckbtc.com/api/data', 10000);
+        const j = await res.json();
+        const down = (j.survival && j.survival.downside) || [];
+        const map = {};
+        down.forEach(p => { if (p && p.strike != null) map[p.strike] = p.probability; });
+        applyProbs(map);
+        cacheSet('probs', map);
+      } catch (e) { console.error('probs error:', e); }
+    }
+
+    // === MSTR STRC 飞轮 (flywheel-monitor + strc-issuance snapshot.json) ===
+    function applyStrc(fw, iss) {
+      if (fw) {
+        const strc = fw.strc || {};
+        if (strc.price != null) {
+          const price = strc.price, chg = strc.change_pct;
+          const col = price < 92 ? 'var(--red)' : price < 95 ? 'var(--gold)' : 'var(--green)';
+          const pEl = document.getElementById('strc-price');
+          pEl.innerHTML = '$' + price.toFixed(2) +
+            ' <span style="font-size:12px;color:' + (chg >= 0 ? 'var(--green)' : 'var(--red)') + '">' +
+            (chg >= 0 ? '↑' : '↓') + Math.abs(chg || 0).toFixed(1) + '%</span>';
+          pEl.style.color = col;
+        }
+        if (fw.flywheel_score != null) {
+          const score = fw.flywheel_score;
+          const sEl = document.getElementById('strc-score');
+          sEl.textContent = score + '/100';
+          sEl.style.color = score < 33 ? 'var(--red)' : score < 66 ? 'var(--gold)' : 'var(--green)';
+        }
+        if (fw.reasons && fw.reasons.length) {
+          document.getElementById('strc-reasons').textContent = fw.reasons.join(' · ');
+        }
+      }
+      if (iss && iss.parsed && iss.parsed.strc && iss.parsed.strc.atm_remaining_m != null) {
+        const remM = iss.parsed.strc.atm_remaining_m;        // ATM 剩余 (M)
+        const ATM_AUTH_M = 21000;                            // STRC ATM 授权总额 $21B (strategy.com 2026-03-23)
+        document.getElementById('strc-atm').textContent = '$' + (remM / 1000).toFixed(2) + 'B';
+        const issuedB = Math.max(0, (ATM_AUTH_M - remM) / 1000);
+        document.getElementById('strc-issued').textContent = '$' + issuedB.toFixed(2) + 'B';
+      }
+    }
+    async function fetchStrc() {
+      try {
+        const [fw, iss] = await Promise.all([
+          fetchTimeout('https://flywheel-monitor.pages.dev/snapshot.json', 10000).then(r => r.json()).catch(() => null),
+          fetchTimeout('https://strc-issuance.pages.dev/snapshot.json', 10000).then(r => r.json()).catch(() => null)
+        ]);
+        applyStrc(fw, iss);
+        cacheSet('strc', { fw, iss });
+      } catch (e) { console.error('strc error:', e); }
+    }
+
     document.getElementById('electricity').addEventListener('input', function() {
       const v = parseFloat(this.value).toFixed(3);
       document.getElementById('elec-value').textContent = '$' + v + '/kWh';
@@ -899,7 +1012,7 @@
     loadCache(); // 立即显示缓存数据
     fetchData();
     fetchFng();
-    setTimeout(() => { fetchAhr999(); fetchWma200(); fetchHalving(); fetchBalancedPrice(); fetchMvrv(); }, 2000);
+    setTimeout(() => { fetchAhr999(); fetchWma200(); fetchHalving(); fetchBalancedPrice(); fetchMvrv(); fetchProbs(); fetchStrc(); }, 2000);
     setTimeout(fetchMnavAll, 4000); // mNAV 延后确保 BTC 价格已加载
     setInterval(fetchData, 15000);
     setInterval(fetchFng, 600000);
@@ -909,6 +1022,8 @@
     setInterval(fetchBalancedPrice, 3600000);
     setInterval(fetchMvrv, 3600000);
     setInterval(fetchMnavAll, 3600000);
+    setInterval(fetchProbs, 1800000);   // 跌破概率 30min
+    setInterval(fetchStrc, 1800000);    // STRC 飞轮 30min
   </script>
 </body>
 </html>
