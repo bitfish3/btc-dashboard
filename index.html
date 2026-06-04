@@ -420,7 +420,7 @@
         <div class="cycle-main" id="strc-atm" style="color:var(--blue)">$--</div>
         <div class="cycle-sub">
           增发水管余量，越少越依赖二级<br>
-          <span style="color:var(--dim)">发行量 <span id="strc-issued" style="color:var(--text)">$--</span> · 授权 $21B</span>
+          <span style="color:var(--dim)">STRC 发行量 <span id="strc-issued" style="color:var(--text)">$--</span></span>
         </div>
       </div>
       <div class="cycle-card">
@@ -982,13 +982,14 @@
         if (fw.reasons && fw.reasons.length) {
           document.getElementById('strc-reasons').textContent = fw.reasons.join(' · ');
         }
+        // STRC 发行量 = 流通股 × $100 par (strategy.com 官方实时)
+        const sm = (fw.strategy_official || {}).strc_metrics || {};
+        if (sm.shares) {
+          document.getElementById('strc-issued').textContent = '$' + (sm.shares * 100 / 1e9).toFixed(2) + 'B';
+        }
       }
       if (iss && iss.parsed && iss.parsed.strc && iss.parsed.strc.atm_remaining_m != null) {
-        const remM = iss.parsed.strc.atm_remaining_m;        // ATM 剩余 (M)
-        const ATM_AUTH_M = 21000;                            // STRC ATM 授权总额 $21B (strategy.com 2026-03-23)
-        document.getElementById('strc-atm').textContent = '$' + (remM / 1000).toFixed(2) + 'B';
-        const issuedB = Math.max(0, (ATM_AUTH_M - remM) / 1000);
-        document.getElementById('strc-issued').textContent = '$' + issuedB.toFixed(2) + 'B';
+        document.getElementById('strc-atm').textContent = '$' + (iss.parsed.strc.atm_remaining_m / 1000).toFixed(2) + 'B';
       }
     }
     async function fetchStrc() {
