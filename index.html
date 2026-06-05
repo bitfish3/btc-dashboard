@@ -344,6 +344,14 @@
         </div>
       </div>
       <div class="cycle-card">
+        <div class="cycle-card-title">锚定 VWAP (周期底 2022-11)</div>
+        <div class="cycle-main" id="vwap-price" style="color:var(--blue)">$--,---</div>
+        <div class="cycle-sub">
+          当前价格 / VWAP = <span id="vwap-ratio">--</span>x<br>
+          <span id="vwap-note" style="color:var(--dim)">牛市成交量加权成本线，比 200WMA 更强的周期支撑</span>
+        </div>
+      </div>
+      <div class="cycle-card">
         <div class="cycle-card-title">Balanced Price (均衡价格)</div>
         <div class="cycle-main" id="bp-price" style="color:var(--green)">$--,---</div>
         <div class="cycle-sub">
@@ -528,6 +536,8 @@
       if (fng) applyFng(fng);
       const wma = cacheGet('wma200', 86400000);
       if (wma) applyWma200(wma);
+      const vwapC = cacheGet('vwap', 86400000);
+      if (vwapC) applyVwap(vwapC);
       const bp = cacheGet('bp', 86400000);
       if (bp) applyBp(bp);
       const halv = cacheGet('halving', 86400000);
@@ -841,6 +851,36 @@
       } catch (e) { console.error('200WMA error:', e); }
     }
 
+    // === 锚定 VWAP (Hazen Lee: 比 200WMA 更强的周期支撑) — 成交量加权 ===
+    const VWAP_ANCHOR = Date.UTC(2022, 10, 21); // 2022-11-21 FTX 周期底
+    function applyVwap(vwap) {
+      document.getElementById('vwap-price').textContent = '$' + Math.round(vwap).toLocaleString();
+      if (currentPrice <= 0) return;
+      const ratio = currentPrice / vwap;
+      const el = document.getElementById('vwap-ratio');
+      el.textContent = ratio.toFixed(2);
+      const note = document.getElementById('vwap-note');
+      if (ratio < 1) { el.style.color = 'var(--red)'; note.textContent = '⚠️ 跌破周期 VWAP — 牛市成本线失守'; note.style.color = 'var(--red)'; }
+      else if (ratio < 1.3) { el.style.color = 'var(--green)'; note.textContent = '✅ 接近周期 VWAP — 强支撑 / 定投区'; note.style.color = 'var(--green)'; }
+      else if (ratio < 2.5) { el.style.color = 'var(--gold)'; note.textContent = '📈 高于周期 VWAP — 正常持有区'; note.style.color = 'var(--dim)'; }
+      else { el.style.color = 'var(--red)'; note.textContent = '🔥 远超周期 VWAP — 过热'; note.style.color = 'var(--red)'; }
+    }
+    async function fetchVwap() {
+      try {
+        let qv = 0, bv = 0;
+        try {
+          const res = await fetchTimeout('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1w&limit=200', 8000);
+          const kl = await res.json(); // [openTime,o,h,l,c,vol,closeTime,quoteVol,...]
+          kl.forEach(c => { if (c[0] >= VWAP_ANCHOR) { bv += parseFloat(c[5]); qv += parseFloat(c[7]); } });
+        } catch (_) {
+          const res = await fetchTimeout('https://www.okx.com/api/v5/market/candles?instId=BTC-USDT&bar=1W&limit=200', 8000);
+          const d = await res.json(); // [ts,o,h,l,c,vol,volCcy,...]
+          d.data.forEach(c => { const t = parseInt(c[0]); if (t >= VWAP_ANCHOR) { bv += parseFloat(c[5]); qv += parseFloat(c[6]); } });
+        }
+        if (bv > 0) { const vwap = qv / bv; applyVwap(vwap); cacheSet('vwap', vwap); }
+      } catch (e) { console.error('VWAP error:', e); }
+    }
+
     function applyHalving(d) {
       document.getElementById('halving-days').textContent = d.days + ' 天';
       document.getElementById('halving-block').textContent = d.height.toLocaleString();
@@ -1013,12 +1053,13 @@
     loadCache(); // 立即显示缓存数据
     fetchData();
     fetchFng();
-    setTimeout(() => { fetchAhr999(); fetchWma200(); fetchHalving(); fetchBalancedPrice(); fetchMvrv(); fetchProbs(); fetchStrc(); }, 2000);
+    setTimeout(() => { fetchAhr999(); fetchWma200(); fetchVwap(); fetchHalving(); fetchBalancedPrice(); fetchMvrv(); fetchProbs(); fetchStrc(); }, 2000);
     setTimeout(fetchMnavAll, 4000); // mNAV 延后确保 BTC 价格已加载
     setInterval(fetchData, 15000);
     setInterval(fetchFng, 600000);
     setInterval(fetchAhr999, 300000);
     setInterval(fetchWma200, 300000);
+    setInterval(fetchVwap, 300000);
     setInterval(fetchHalving, 600000);
     setInterval(fetchBalancedPrice, 3600000);
     setInterval(fetchMvrv, 3600000);
