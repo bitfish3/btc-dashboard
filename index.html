@@ -344,11 +344,11 @@
         </div>
       </div>
       <div class="cycle-card">
-        <div class="cycle-card-title">锚定 VWAP (周期底 2022-11)</div>
+        <div class="cycle-card-title">全周期 VWAP (2017 起)</div>
         <div class="cycle-main" id="vwap-price" style="color:var(--blue)">$--,---</div>
         <div class="cycle-sub">
           当前价格 / VWAP = <span id="vwap-ratio">--</span>x<br>
-          <span id="vwap-note" style="color:var(--dim)">牛市成交量加权成本线，比 200WMA 更强的周期支撑</span>
+          <span id="vwap-note" style="color:var(--dim)">全历史成交量加权成本线，BTC 终极价值锚 (Hazen Lee)</span>
         </div>
       </div>
       <div class="cycle-card">
@@ -851,8 +851,8 @@
       } catch (e) { console.error('200WMA error:', e); }
     }
 
-    // === 锚定 VWAP (Hazen Lee: 比 200WMA 更强的周期支撑) — 成交量加权 ===
-    const VWAP_ANCHOR = Date.UTC(2022, 10, 21); // 2022-11-21 FTX 周期底
+    // === 全周期 VWAP (Hazen Lee: 全历史成交量加权成本线, 比 200WMA 更深的周期支撑) ===
+    // 注: OKX 早期 BTC-USDT 历史/成交量不足 → 长周期 VWAP 偏高 ($62k), 故只用 Binance(2017起最深)
     function applyVwap(vwap) {
       document.getElementById('vwap-price').textContent = '$' + Math.round(vwap).toLocaleString();
       if (currentPrice <= 0) return;
@@ -860,23 +860,18 @@
       const el = document.getElementById('vwap-ratio');
       el.textContent = ratio.toFixed(2);
       const note = document.getElementById('vwap-note');
-      if (ratio < 1) { el.style.color = 'var(--red)'; note.textContent = '⚠️ 跌破周期 VWAP — 牛市成本线失守'; note.style.color = 'var(--red)'; }
-      else if (ratio < 1.3) { el.style.color = 'var(--green)'; note.textContent = '✅ 接近周期 VWAP — 强支撑 / 定投区'; note.style.color = 'var(--green)'; }
-      else if (ratio < 2.5) { el.style.color = 'var(--gold)'; note.textContent = '📈 高于周期 VWAP — 正常持有区'; note.style.color = 'var(--dim)'; }
-      else { el.style.color = 'var(--red)'; note.textContent = '🔥 远超周期 VWAP — 过热'; note.style.color = 'var(--red)'; }
+      if (ratio < 1) { el.style.color = 'var(--red)'; note.textContent = '⚠️ 跌破全周期成本 — 历史级低估'; note.style.color = 'var(--red)'; }
+      else if (ratio < 1.5) { el.style.color = 'var(--green)'; note.textContent = '✅ 接近全周期成本线 — 深度价值区'; note.style.color = 'var(--green)'; }
+      else if (ratio < 3) { el.style.color = 'var(--gold)'; note.textContent = '📈 高于全周期成本 — 正常区间'; note.style.color = 'var(--dim)'; }
+      else { el.style.color = 'var(--red)'; note.textContent = '🔥 远超全周期成本 — 周期过热'; note.style.color = 'var(--red)'; }
     }
     async function fetchVwap() {
       try {
+        // 全周期 = Σ(成交额)/Σ(成交量), Binance 周线全历史 (~460 周, 2017 起)
+        const res = await fetchTimeout('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1w&limit=1000', 9000);
+        const kl = await res.json(); // [openTime,o,h,l,c,vol,closeTime,quoteVol,...]
         let qv = 0, bv = 0;
-        try {
-          const res = await fetchTimeout('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1w&limit=200', 8000);
-          const kl = await res.json(); // [openTime,o,h,l,c,vol,closeTime,quoteVol,...]
-          kl.forEach(c => { if (c[0] >= VWAP_ANCHOR) { bv += parseFloat(c[5]); qv += parseFloat(c[7]); } });
-        } catch (_) {
-          const res = await fetchTimeout('https://www.okx.com/api/v5/market/candles?instId=BTC-USDT&bar=1W&limit=200', 8000);
-          const d = await res.json(); // [ts,o,h,l,c,vol,volCcy,...]
-          d.data.forEach(c => { const t = parseInt(c[0]); if (t >= VWAP_ANCHOR) { bv += parseFloat(c[5]); qv += parseFloat(c[6]); } });
-        }
+        kl.forEach(c => { bv += parseFloat(c[5]); qv += parseFloat(c[7]); });
         if (bv > 0) { const vwap = qv / bv; applyVwap(vwap); cacheSet('vwap', vwap); }
       } catch (e) { console.error('VWAP error:', e); }
     }
