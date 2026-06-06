@@ -370,6 +370,13 @@
         </div>
       </div>
       <div class="cycle-card">
+        <div class="cycle-card-title">MVRV Z-Score</div>
+        <div class="cycle-main" id="mvrvz-value" style="color:var(--green)">--</div>
+        <div class="cycle-sub">
+          <span id="mvrvz-note" style="color:var(--dim)">&lt;0 极度低估 · 0~5 正常 · &gt;7 顶部泡沫</span>
+        </div>
+      </div>
+      <div class="cycle-card">
         <div class="cycle-card-title">SOPR (卖出盈亏比 · 卖出潮信号)</div>
         <div class="cycle-main" id="sopr-value" style="color:var(--green)">--</div>
         <div class="cycle-sub">
@@ -381,6 +388,14 @@
         <div class="cycle-main" id="puell-value" style="color:var(--green)">--</div>
         <div class="cycle-sub">
           <span id="puell-note" style="color:var(--dim)">&lt;0.5 矿工深度投降(历史大底) · 0.5~1 承压 · &gt;4 顶部</span>
+        </div>
+      </div>
+      <div class="cycle-card">
+        <div class="cycle-card-title">Hash Ribbons (矿工投降 · 算力)</div>
+        <div class="cycle-main" id="hashribbon-value" style="color:var(--text)">--</div>
+        <div class="cycle-sub">
+          <span id="hashribbon-detail" style="color:var(--dim)">30d/60d 算力均线</span><br>
+          <span id="hashribbon-note" style="color:var(--dim)">30d&lt;60d=矿工投降 · 上穿=复苏买点</span>
         </div>
       </div>
       <div class="cycle-card">
@@ -819,6 +834,59 @@
       } catch (e) { console.error('Puell error:', e); }
     }
 
+    function applyMvrvZ(z) {
+      const el = document.getElementById('mvrvz-value');
+      el.textContent = z.toFixed(2);
+      const noteEl = document.getElementById('mvrvz-note');
+      if (z < 0) { el.style.color = 'var(--green)'; noteEl.textContent = '🟢 Z<0 极度低估 — 历史大底区'; noteEl.style.color = 'var(--green)'; }
+      else if (z < 2) { el.style.color = 'var(--green)'; noteEl.textContent = '🟢 低估累积区'; noteEl.style.color = 'var(--green)'; }
+      else if (z < 5) { el.style.color = 'var(--text)'; noteEl.textContent = '正常估值区间'; noteEl.style.color = 'var(--dim)'; }
+      else if (z < 7) { el.style.color = 'var(--gold)'; noteEl.textContent = '📈 偏热 — 注意风险'; noteEl.style.color = 'var(--gold)'; }
+      else { el.style.color = 'var(--red)'; noteEl.textContent = '🔴 Z>7 顶部泡沫区'; noteEl.style.color = 'var(--red)'; }
+    }
+
+    async function fetchMvrvZ() {
+      try {
+        const res = await fetchTimeout('https://bitcoin-data.com/v1/mvrv-zscore', 10000);
+        const json = await res.json();
+        if (!Array.isArray(json) || json.length === 0) return;
+        const z = parseFloat(json[json.length - 1].mvrvZscore);
+        if (isNaN(z)) return;
+        applyMvrvZ(z);
+        cacheSet('mvrvz', z);
+      } catch (e) { console.error('MVRVZ error:', e); }
+    }
+
+    function applyHashRibbons(ma30, ma60, recentCapit) {
+      const eh = 1e18, ratio = ma30 / ma60;
+      const el = document.getElementById('hashribbon-value');
+      el.textContent = ratio.toFixed(3) + 'x';
+      document.getElementById('hashribbon-detail').textContent = '30d ' + (ma30 / eh).toFixed(0) + ' / 60d ' + (ma60 / eh).toFixed(0) + ' EH/s';
+      const noteEl = document.getElementById('hashribbon-note');
+      if (ratio < 1) { el.style.color = 'var(--gold)'; noteEl.textContent = '🟡 矿工投降中 — 30d 算力跌破 60d，历史底部酝酿'; noteEl.style.color = 'var(--gold)'; }
+      else if (recentCapit) { el.style.color = 'var(--green)'; noteEl.textContent = '🟢 投降结束·算力复苏 — 历史买入信号'; noteEl.style.color = 'var(--green)'; }
+      else { el.style.color = 'var(--text)'; noteEl.textContent = '算力健康（近期无矿工投降）'; noteEl.style.color = 'var(--dim)'; }
+    }
+
+    async function fetchHashRibbons() {
+      try {
+        const res = await fetchTimeout('https://mempool.space/api/v1/mining/hashrate/1y', 12000);
+        const json = await res.json();
+        const hr = json.hashrates || [];
+        if (hr.length < 60) return;
+        const vals = hr.map(h => h.avgHashrate);
+        const ma = (arr, n, i) => { let s = 0; for (let k = i - n + 1; k <= i; k++) s += arr[k]; return s / n; };
+        const last = vals.length - 1;
+        const cur30 = ma(vals, 30, last), cur60 = ma(vals, 60, last);
+        let recentCapit = false;
+        for (let i = Math.max(60, last - 45); i <= last; i++) {
+          if (ma(vals, 30, i) < ma(vals, 60, i)) { recentCapit = true; break; }
+        }
+        applyHashRibbons(cur30, cur60, recentCapit);
+        cacheSet('hashribbon', cur30 / cur60);
+      } catch (e) { console.error('HashRibbons error:', e); }
+    }
+
     function applyMnav(id, val) {
       const el = document.getElementById(id);
       el.textContent = val.toFixed(2) + 'x';
@@ -1114,7 +1182,7 @@
     loadCache(); // 立即显示缓存数据
     fetchData();
     fetchFng();
-    setTimeout(() => { fetchAhr999(); fetchWma200(); fetchHalving(); fetchBalancedPrice(); fetchMvrv(); fetchSopr(); fetchPuell(); fetchProbs(); fetchStrc(); }, 2000);
+    setTimeout(() => { fetchAhr999(); fetchWma200(); fetchHalving(); fetchBalancedPrice(); fetchMvrv(); fetchMvrvZ(); fetchSopr(); fetchPuell(); fetchHashRibbons(); fetchProbs(); fetchStrc(); }, 2000);
     setTimeout(fetchMnavAll, 4000); // mNAV 延后确保 BTC 价格已加载
     setInterval(fetchData, 15000);
     setInterval(fetchFng, 600000);
