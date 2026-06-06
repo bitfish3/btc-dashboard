@@ -13,6 +13,7 @@ async function jget(url) {
 
 async function refresh(prev) {
   const next = { ...prev };
+  delete next._dbg; // 清除历史调试残留（避免 spread 永久带着）
   // MVRV Z-Score (bitcoin-data 间歇挂 → 失败保留 last-good)
   try { const a = await jget(SRC.mvrvz); const v = parseFloat(a?.[a.length - 1]?.mvrvZscore); if (!isNaN(v)) next.mvrvz = v; } catch (e) {}
   next.ts = Date.now();
