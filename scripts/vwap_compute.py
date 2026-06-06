@@ -118,16 +118,19 @@ def _pearson(xs, ys):
     return cov / dd if dd else None
 
 
+CORR_WINDOWS = (30, 90, 180, 252)  # 交易日: 30d/90d/180d/1年(≈252)
+
+
 def correlations():
-    """BTC 与 黄金(GLD) / 纳指100(QQQ) 的滚动日收益相关性 (30d/90d)."""
-    btc, gld, qqq = yahoo_closes("BTC-USD"), yahoo_closes("GLD"), yahoo_closes("QQQ")
+    """BTC 与 黄金(GLD) / 纳指100(QQQ) 的滚动日收益相关性 (30/90/180/252 交易日)."""
+    btc, gld, qqq = yahoo_closes("BTC-USD", "2y"), yahoo_closes("GLD", "2y"), yahoo_closes("QQQ", "2y")
     out = {}
     for label, other in (("gold", gld), ("qqq", qqq)):
         days = sorted(set(btc) & set(other))  # 共同交易日 (GLD/QQQ 仅工作日)
         rb = [btc[days[i]] / btc[days[i - 1]] - 1 for i in range(1, len(days))]
         ro = [other[days[i]] / other[days[i - 1]] - 1 for i in range(1, len(days))]
         out[label] = {}
-        for w in (30, 90):
+        for w in CORR_WINDOWS:
             c = _pearson(rb[-w:], ro[-w:]) if len(rb) >= w else None
             out[label][f"d{w}"] = round(c, 2) if c is not None else None
     return out
@@ -154,10 +157,10 @@ def main():
 
     def _c(x):
         return "null" if x is None else f"{x}"
-    corr_line = ("    const CORR_VALUES = { "
-                 f"gold: {{ d30: {_c(corr['gold']['d30'])}, d90: {_c(corr['gold']['d90'])} }}, "
-                 f"qqq: {{ d30: {_c(corr['qqq']['d30'])}, d90: {_c(corr['qqq']['d90'])} }} "
-                 "}; // @corr-auto")
+
+    def _co(p):
+        return "{ " + ", ".join(f"d{w}: {_c(corr[p][f'd{w}'])}" for w in CORR_WINDOWS) + " }"
+    corr_line = f"    const CORR_VALUES = {{ gold: {_co('gold')}, qqq: {_co('qqq')} }}; // @corr-auto"
     html2, n1 = re.subn(r"    const VWAP_VALUES = \{[^}]*\}; // @vwap-auto", vwap_line, html)
     html2, n2 = re.subn(r"    const CORR_VALUES = \{.*\}; // @corr-auto", corr_line, html2)
     if n1 != 1 or n2 != 1:
