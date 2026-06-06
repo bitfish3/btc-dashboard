@@ -98,6 +98,41 @@ def ibit_parts(btc):
     return {"2017": allp, "2022": allp, "halv": halvp}, ipx, s
 
 
+def yahoo_closes(symbol, rng="1y"):
+    d = get(f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1d&range={rng}")
+    r = d["chart"]["result"][0]
+    ts, cl = r["timestamp"], r["indicators"]["quote"][0]["close"]
+    return {t // 86400: c for t, c in zip(ts, cl) if c is not None}  # 按 UTC 日索引
+
+
+def _pearson(xs, ys):
+    import math
+    n = len(xs)
+    if n < 3:
+        return None
+    mx, my = sum(xs) / n, sum(ys) / n
+    cov = sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+    vx = sum((x - mx) ** 2 for x in xs)
+    vy = sum((y - my) ** 2 for y in ys)
+    dd = math.sqrt(vx * vy)
+    return cov / dd if dd else None
+
+
+def correlations():
+    """BTC 与 黄金(GLD) / 纳指100(QQQ) 的滚动日收益相关性 (30d/90d)."""
+    btc, gld, qqq = yahoo_closes("BTC-USD"), yahoo_closes("GLD"), yahoo_closes("QQQ")
+    out = {}
+    for label, other in (("gold", gld), ("qqq", qqq)):
+        days = sorted(set(btc) & set(other))  # 共同交易日 (GLD/QQQ 仅工作日)
+        rb = [btc[days[i]] / btc[days[i - 1]] - 1 for i in range(1, len(days))]
+        ro = [other[days[i]] / other[days[i - 1]] - 1 for i in range(1, len(days))]
+        out[label] = {}
+        for w in (30, 90):
+            c = _pearson(rb[-w:], ro[-w:]) if len(rb) >= w else None
+            out[label][f"d{w}"] = round(c, 2) if c is not None else None
+    return out
+
+
 def main():
     btc = float(get("https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT")["lastPrice"])
     bn = binance_sums()
@@ -108,17 +143,26 @@ def main():
         num = bn[k][0] + cb[k][0] + ib[k][0]
         den = bn[k][1] + cb[k][1] + ib[k][1]
         a[k] = int(round(num / den))
+    corr = correlations()
 
-    # 直接把数值写进 index.html 的 VWAP_VALUES 常量行 (网页只显示存好的值, 不计算)
+    # 直接把数值写进 index.html 的常量行 (网页只显示存好的值, 不计算)
     index = ROOT / "index.html"
     html = index.read_text()
-    new_line = ("    const VWAP_VALUES = { "
-                f"'2017': {a['2017']}, '2022': {a['2022']}, 'halv': {a['halv']} "
-                "}; // @vwap-auto")
-    html2, n = re.subn(r"    const VWAP_VALUES = \{[^}]*\}; // @vwap-auto", new_line, html)
-    if n != 1:
-        sys.exit(f"ERROR: VWAP_VALUES 锚行未匹配 (n={n}), 放弃")
-    print(f"computed {a} | cb_days {cb_days} | btc {round(btc)} | ibit {ipx}")
+    vwap_line = ("    const VWAP_VALUES = { "
+                 f"'2017': {a['2017']}, '2022': {a['2022']}, 'halv': {a['halv']} "
+                 "}; // @vwap-auto")
+
+    def _c(x):
+        return "null" if x is None else f"{x}"
+    corr_line = ("    const CORR_VALUES = { "
+                 f"gold: {{ d30: {_c(corr['gold']['d30'])}, d90: {_c(corr['gold']['d90'])} }}, "
+                 f"qqq: {{ d30: {_c(corr['qqq']['d30'])}, d90: {_c(corr['qqq']['d90'])} }} "
+                 "}; // @corr-auto")
+    html2, n1 = re.subn(r"    const VWAP_VALUES = \{[^}]*\}; // @vwap-auto", vwap_line, html)
+    html2, n2 = re.subn(r"    const CORR_VALUES = \{.*\}; // @corr-auto", corr_line, html2)
+    if n1 != 1 or n2 != 1:
+        sys.exit(f"ERROR: 常量锚行未匹配 (vwap={n1}, corr={n2}), 放弃")
+    print(f"vwap {a} | corr {corr} | cb_days {cb_days} | btc {round(btc)}")
     if html2 == html:
         print("no change")
         return
@@ -129,7 +173,7 @@ def main():
         subprocess.run(["git", "-C", str(ROOT), "rm", "-q", "vwap.json"], check=False)
     subprocess.run(["git", "-C", str(ROOT), "add", "index.html"], check=True)
     r = subprocess.run(
-        ["git", "-C", str(ROOT), "commit", "-m", f"chore(vwap): 每周刷新数值 {a}"],
+        ["git", "-C", str(ROOT), "commit", "-m", f"chore(weekly): VWAP {a} | corr {corr}"],
         capture_output=True, text=True,
     )
     if r.returncode == 0:
