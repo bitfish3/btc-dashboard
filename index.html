@@ -392,7 +392,7 @@
         </tbody>
       </table>
       <div class="cycle-sub" style="margin-top:8px">
-        <span id="vwap-note" style="color:var(--dim)">现货(Binance+Coinbase)+ETF(IBIT)合成的成交量加权平均成本 · 倍数 &gt;1 获利 / &lt;1 水下。IBIT 仅 2024 起，锚点越近其权重越大。参考 @hazenlee</span>
+        <span id="vwap-note" style="color:var(--dim)">现货(Binance+Coinbase)+ETF(IBIT)合成的成交量加权成本 · 每周更新 · 倍数 &gt;1 获利 / &lt;1 水下。IBIT 仅 2024 起，锚点越近权重越大。参考 @hazenlee</span>
       </div>
     </div>
 
@@ -555,13 +555,8 @@
       if (fng) applyFng(fng);
       const wma = cacheGet('wma200', 86400000);
       if (wma) applyWma200(wma);
-      const vbC = cacheGet('vwapBin', 86400000);
-      if (vbC) vwapBin = vbC;
-      const vcbC = cacheGet('vwapCb', 86400000);
-      if (vcbC) vwapCb = vcbC;
-      const viC = cacheGet('vwapIbit', 86400000);
-      if (viC) vwapIbit = viC;
-      if (vbC || vcbC || viC) renderVwap();
+      const vwapC = cacheGet('vwapData', 604800000); // VWAP 周级缓存
+      if (vwapC) { vwapData = vwapC; renderVwap(); }
       const bp = cacheGet('bp', 86400000);
       if (bp) applyBp(bp);
       const halv = cacheGet('halving', 86400000);
@@ -642,6 +637,7 @@
             ' <span style="font-size:12px;color:' + (chg >= 0 ? 'var(--green)' : 'var(--red)') + '">' +
             (chg >= 0 ? '↑' : '↓') + Math.abs(chg).toFixed(2) + '%</span>';
           cacheSet('price', priceData);
+          renderVwap(); // VWAP 值固定(周更), 仅随现价刷新倍数
         }
 
         if (mRes) {
@@ -814,13 +810,6 @@
           document.getElementById('bmnr-detail').textContent = 'ETH ' + b.eth_holdings.toLocaleString() + ' | $' + b.stock_price;
           cacheSet('bmnr-mnav', { mnav: bmnrMnav, eth: b.eth_holdings, price: b.stock_price });
         }
-
-        // === IBIT (ETF) 成交量 → 并入合成 VWAP ===
-        var ib = d.ibit;
-        if (ib && ib.stock_price && ib.vwap) {
-          vwapIbit = { price: ib.stock_price, vwap: ib.vwap, vol: ib.vol, vwap_halving: ib.vwap_halving, vol_halving: ib.vol_halving };
-          cacheSet('vwapIbit', vwapIbit); renderVwap();
-        }
       } catch (e) { console.error('mNAV error:', e); }
     }
 
@@ -882,13 +871,10 @@
       } catch (e) { console.error('200WMA error:', e); }
     }
 
-    // === 全周期 VWAP 成本锚 (Hazen Lee): 币安+Coinbase 现货 + IBIT(ETF) 合成成交量加权, 3 锚点 ===
-    // 注: Binance(2017起最深,带 quoteVol); Coinbase 分页日线(客户端单IP避限流); IBIT 经 worker(yahoo 无 CORS)
-    const VWAP_ANCHORS = { '2017': 0, '2022': Date.UTC(2022, 10, 21), 'halv': Date.UTC(2024, 3, 20) };
-    let vwapBin = null;   // {2017:{usd,btc},...} 币安各锚点 Σ成交额(USD)/Σ成交量(BTC)
-    let vwapCb = null;    // {2017:{usd,btc},...} Coinbase BTC-USD 各锚点
-    let vwapIbit = null;  // {price,vwap,vol,vwap_halving,vol_halving} 来自 /mnav
-    // 单元格: $合成VWAP + 现价/VWAP 倍数 (水下红/价值金/获利绿)
+    // === 全周期 VWAP 成本锚 (Hazen Lee): 币安+Coinbase 现货 + IBIT(ETF) 三源合成 ===
+    // 每周由 scripts/vwap_compute.py 预计算 → /vwap.json。前端只读一个最终值 + 算实时倍数,
+    // 不再客户端多源拼装 → 刷新不再跳变 (Codex 已交叉验证 <0.5%)。
+    let vwapData = null;  // { anchors:{2017,2022,halv}, btc_at_compute, computed_at }
     function vwapCell(id, price) {
       const el = document.getElementById(id);
       if (!el || !price || currentPrice <= 0) return;
@@ -896,57 +882,18 @@
       const col = r < 1 ? 'var(--red)' : r < 1.5 ? 'var(--gold)' : 'var(--green)';
       el.innerHTML = '$' + Math.round(price).toLocaleString() + ' <span style="color:' + col + '">' + r.toFixed(2) + 'x</span>';
     }
-    // 合成 = (币安USD + IBIT USD) / (币安BTC + IBIT BTC等价量); s=BTC/股=IBIT价/BTC价
     function renderVwap() {
-      if (!vwapBin || currentPrice <= 0) return;
-      const s = (vwapIbit && vwapIbit.price) ? (vwapIbit.price / currentPrice) : null;
-      function combo(key, iVwap, iVol) {
-        const bin = vwapBin[key]; if (!bin) return null;
-        let num = bin.usd, den = bin.btc;
-        if (vwapCb && vwapCb[key]) { num += vwapCb[key].usd; den += vwapCb[key].btc; } // 叠加 Coinbase 现货
-        if (s && iVwap && iVol) { num += iVwap * iVol; den += iVol * s; } // 叠加 IBIT 成交额 + BTC等价量
-        return den > 0 ? num / den : null;
-      }
-      const iv = vwapIbit || {};
-      vwapCell('vwap-2017', combo('2017', iv.vwap, iv.vol));                          // 锚<2024 → IBIT 全历史
-      vwapCell('vwap-2022', combo('2022', iv.vwap, iv.vol));
-      vwapCell('vwap-halv', combo('halv', iv.vwap_halving || iv.vwap, iv.vol_halving || iv.vol)); // 减半起
-    }
-    // Coinbase BTC-USD 分页日线 (单IP顺序抓避 429; 覆盖<3000天则放弃, 不污染合成)
-    async function fetchCoinbaseSums() {
-      const G = 86400, per = 300;
-      const start = Math.floor(Date.UTC(2017, 7, 14) / 1000), now = Math.floor(Date.now() / 1000);
-      const seen = {};
-      for (let cur = now; cur > start; cur -= per * G) {
-        try {
-          const r = await fetchTimeout('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=' + G + '&start=' + (cur - per * G) + '&end=' + cur, 8000);
-          const arr = await r.json();
-          if (Array.isArray(arr)) arr.forEach(c => { if (Array.isArray(c) && c.length >= 6) seen[c[0]] = c; });
-        } catch (_) {}
-      }
-      if (Object.keys(seen).length < 3000) return null; // 覆盖不足(被限流) → 放弃 Coinbase
-      const ANCH = { '2017': 0, '2022': Math.floor(Date.UTC(2022, 10, 21) / 1000), 'halv': Math.floor(Date.UTC(2024, 3, 20) / 1000) };
-      const acc = { '2017': [0, 0], '2022': [0, 0], 'halv': [0, 0] };
-      Object.values(seen).forEach(c => { const usd = ((c[2] + c[1] + c[4]) / 3) * c[5]; for (const k in ANCH) { if (c[0] >= ANCH[k]) { acc[k][0] += usd; acc[k][1] += c[5]; } } });
-      return { '2017': { usd: acc['2017'][0], btc: acc['2017'][1] }, '2022': { usd: acc['2022'][0], btc: acc['2022'][1] }, 'halv': { usd: acc['halv'][0], btc: acc['halv'][1] } };
+      if (!vwapData || !vwapData.anchors) return;
+      const a = vwapData.anchors;
+      vwapCell('vwap-2017', a['2017']); vwapCell('vwap-2022', a['2022']); vwapCell('vwap-halv', a['halv']);
     }
     async function fetchVwap() {
       try {
-        // 币安各锚点 Σ成交额/Σ成交量, 周线全历史 (~460 周, 2017 起)
-        const res = await fetchTimeout('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1w&limit=1000', 9000);
-        const kl = await res.json(); // [openTime,o,h,l,c,vol,closeTime,quoteVol,...]
-        const acc = { '2017': [0, 0], '2022': [0, 0], 'halv': [0, 0] };
-        kl.forEach(c => {
-          const b = parseFloat(c[5]), q = parseFloat(c[7]);
-          for (const key in VWAP_ANCHORS) { if (c[0] >= VWAP_ANCHORS[key]) { acc[key][0] += q; acc[key][1] += b; } }
-        });
-        vwapBin = { '2017': { usd: acc['2017'][0], btc: acc['2017'][1] }, '2022': { usd: acc['2022'][0], btc: acc['2022'][1] }, 'halv': { usd: acc['halv'][0], btc: acc['halv'][1] } };
-        cacheSet('vwapBin', vwapBin); renderVwap();
-        // Coinbase: 仅当缓存过期才重抓 (每日一次), 避免每 5min 11 请求
-        if (!cacheGet('vwapCb', 86400000)) {
-          const cb = await fetchCoinbaseSums();
-          if (cb) { vwapCb = cb; cacheSet('vwapCb', vwapCb); renderVwap(); }
-        }
+        // 周级 cache-bust: 同一周复用缓存, 跨周才拉新预计算值
+        const wk = Math.floor(Date.now() / 6048e5);
+        const res = await fetchTimeout('/vwap.json?w=' + wk, 8000);
+        const j = await res.json();
+        if (j && j.anchors) { vwapData = j; cacheSet('vwapData', j); renderVwap(); }
       } catch (e) { console.error('VWAP error:', e); }
     }
 
@@ -1128,7 +1075,7 @@
     setInterval(fetchFng, 600000);
     setInterval(fetchAhr999, 300000);
     setInterval(fetchWma200, 300000);
-    setInterval(fetchVwap, 300000);
+    // VWAP 周更, 不设刷新间隔; 开机拉一次 /vwap.json, 跨周由 cache-bust 自动取新
     setInterval(fetchHalving, 600000);
     setInterval(fetchBalancedPrice, 3600000);
     setInterval(fetchMvrv, 3600000);
