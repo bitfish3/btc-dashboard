@@ -1,12 +1,12 @@
 {
-  "computed_at": "2026-06-06T04:38:04.076429+00:00",
+  "computed_at": "2026-06-06T04:43:36.333712+00:00",
   "method": "blended VWAP/anchor = Σ(USD turnover: Binance+Coinbase spot + IBIT ETF) / Σ(BTC-equiv volume). IBIT BTC-equiv via current IBIT/BTC ratio. Cross-checked by Codex (<0.5%).",
-  "btc_at_compute": 59799.99,
+  "btc_at_compute": 59794.64,
   "ibit_at_compute": 34.14,
   "coinbase_days": 3300,
   "anchors": {
-    "2017": 32971.6,
-    "2022": 51541.62,
-    "halv": 85223.72
+    "2017": 32971.45,
+    "2022": 51540.92,
+    "halv": 85220.9
   }
 }
