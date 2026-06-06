@@ -421,10 +421,10 @@
     <div class="cycle-card" style="margin-bottom:16px">
       <div class="cycle-card-title">🔗 BTC 资产相关性 — 与黄金 / 纳指100 (日收益滚动)</div>
       <table class="vwap-table">
-        <thead><tr><th>资产</th><th>30 天</th><th>90 天</th></tr></thead>
+        <thead><tr><th>资产</th><th>30天</th><th>90天</th><th>180天</th><th>1年</th></tr></thead>
         <tbody>
-          <tr><td>黄金 (GLD)</td><td id="corr-gold-30">--</td><td id="corr-gold-90">--</td></tr>
-          <tr><td>纳指100 (QQQ)</td><td id="corr-qqq-30">--</td><td id="corr-qqq-90">--</td></tr>
+          <tr><td>黄金 (GLD)</td><td id="corr-gold-30">--</td><td id="corr-gold-90">--</td><td id="corr-gold-180">--</td><td id="corr-gold-252">--</td></tr>
+          <tr><td>纳指100 (QQQ)</td><td id="corr-qqq-30">--</td><td id="corr-qqq-90">--</td><td id="corr-qqq-180">--</td><td id="corr-qqq-252">--</td></tr>
         </tbody>
       </table>
       <div class="cycle-sub" style="margin-top:8px">
@@ -974,7 +974,7 @@
     // === 全周期 VWAP 成本锚 (Hazen Lee): 币安+Coinbase 现货 + IBIT(ETF) 三源合成 ===
     // 数值由 scripts/vwap_compute.py 每周直接写入下面这行常量并 push (网页不计算, 只显示存好的值 + 现价倍数)。
     // 三源合成 = Σ(三源USD成交额)/Σ(三源BTC/BTC等价量); Codex 已交叉验证 <0.5%。
-    const VWAP_VALUES = { '2017': 33005, '2022': 51673, 'halv': 85702 }; // @vwap-auto
+    const VWAP_VALUES = { '2017': 33007, '2022': 51679, 'halv': 85721 }; // @vwap-auto
     function vwapCell(id, price) {
       const el = document.getElementById(id);
       if (!el || !price || currentPrice <= 0) return;
@@ -990,7 +990,7 @@
 
     // === BTC 资产相关性 (与黄金 GLD / 纳指 QQQ, 日收益滚动) ===
     // 数值由 scripts/vwap_compute.py 每周写入下行常量 (网页只显示, 不计算)。
-    const CORR_VALUES = { gold: { d30: 0.35, d90: 0.25 }, qqq: { d30: 0.46, d90: 0.47 } }; // @corr-auto
+    const CORR_VALUES = { gold: { d30: 0.35, d90: 0.25, d180: 0.21, d252: 0.2 }, qqq: { d30: 0.46, d90: 0.47, d180: 0.51, d252: 0.5 } }; // @corr-auto
     function corrCell(id, v) {
       const el = document.getElementById(id);
       if (!el) return;
@@ -999,8 +999,10 @@
       el.innerHTML = '<span style="color:' + col + '">' + (v >= 0 ? '+' : '') + v.toFixed(2) + '</span>';
     }
     function renderCorr() {
-      corrCell('corr-gold-30', CORR_VALUES.gold.d30); corrCell('corr-gold-90', CORR_VALUES.gold.d90);
-      corrCell('corr-qqq-30', CORR_VALUES.qqq.d30); corrCell('corr-qqq-90', CORR_VALUES.qqq.d90);
+      [30, 90, 180, 252].forEach(w => {
+        corrCell('corr-gold-' + w, CORR_VALUES.gold['d' + w]);
+        corrCell('corr-qqq-' + w, CORR_VALUES.qqq['d' + w]);
+      });
     }
 
     function applyHalving(d) {
