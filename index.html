@@ -382,17 +382,17 @@
 
     <!-- 全周期 VWAP 成本锚: BTC(币安) vs IBIT(ETF) 3 锚点 (参考 @hazenlee) -->
     <div class="cycle-card" style="margin-bottom:16px">
-      <div class="cycle-card-title">📐 全周期 VWAP 成本锚 — BTC(币安) vs IBIT(ETF) · 现价 <span id="vwap-cur" style="color:var(--gold)">$--</span></div>
+      <div class="cycle-card-title">📐 全周期 VWAP 成本锚 — 币安现货 + IBIT(ETF) 合成成交量加权</div>
       <table class="vwap-table">
-        <thead><tr><th>锚点</th><th>BTC VWAP</th><th>IBIT 等价 (ETF)</th></tr></thead>
+        <thead><tr><th>锚点</th><th>合成 VWAP (现价倍数)</th></tr></thead>
         <tbody>
-          <tr><td>2017 全周期</td><td id="vwap-2017">--</td><td id="ibit-2017">--</td></tr>
-          <tr><td>2022/11 FTX 底</td><td id="vwap-2022">--</td><td id="ibit-2022">--</td></tr>
-          <tr><td>2024/04 减半</td><td id="vwap-halv">--</td><td id="ibit-halv">--</td></tr>
+          <tr><td>2017 全周期</td><td id="vwap-2017">--</td></tr>
+          <tr><td>2022/11 FTX 底</td><td id="vwap-2022">--</td></tr>
+          <tr><td>2024/04 减半</td><td id="vwap-halv">--</td></tr>
         </tbody>
       </table>
       <div class="cycle-sub" style="margin-top:8px">
-        <span id="vwap-note" style="color:var(--dim)">VWAP=成交量加权平均成本线 · 现价/VWAP &gt;1 获利 / &lt;1 水下。BTC 全历史 OG 深度获利；IBIT(ETF 仅 2024 起) 持有者成本高、普遍水下。</span>
+        <span id="vwap-note" style="color:var(--dim)">现货(Binance)+ETF(IBIT)合成的成交量加权平均成本线 · 倍数 &gt;1 获利 / &lt;1 水下。IBIT 仅 2024 起，锚点越近其权重越大。参考 @hazenlee</span>
       </div>
     </div>
 
@@ -555,10 +555,11 @@
       if (fng) applyFng(fng);
       const wma = cacheGet('wma200', 86400000);
       if (wma) applyWma200(wma);
-      const vwapC = cacheGet('vwap', 86400000);
-      if (vwapC) applyVwap(vwapC);
-      const ibitVC = cacheGet('ibit-vwap', 86400000);
-      if (ibitVC) applyIbitVwap(ibitVC);
+      const vbC = cacheGet('vwapBin', 86400000);
+      if (vbC) vwapBin = vbC;
+      const viC = cacheGet('vwapIbit', 86400000);
+      if (viC) vwapIbit = viC;
+      if (vbC || viC) renderVwap();
       const bp = cacheGet('bp', 86400000);
       if (bp) applyBp(bp);
       const halv = cacheGet('halving', 86400000);
@@ -812,11 +813,11 @@
           cacheSet('bmnr-mnav', { mnav: bmnrMnav, eth: b.eth_holdings, price: b.stock_price });
         }
 
-        // === IBIT (ETF 全周期 VWAP → BTC 等价, 填 VWAP 表 IBIT 列) ===
+        // === IBIT (ETF) 成交量 → 并入合成 VWAP ===
         var ib = d.ibit;
         if (ib && ib.stock_price && ib.vwap) {
-          applyIbitVwap({ price: ib.stock_price, vwap: ib.vwap, vwap_halving: ib.vwap_halving });
-          cacheSet('ibit-vwap', { price: ib.stock_price, vwap: ib.vwap, vwap_halving: ib.vwap_halving });
+          vwapIbit = { price: ib.stock_price, vwap: ib.vwap, vol: ib.vol, vwap_halving: ib.vwap_halving, vol_halving: ib.vol_halving };
+          cacheSet('vwapIbit', vwapIbit); renderVwap();
         }
       } catch (e) { console.error('mNAV error:', e); }
     }
@@ -879,10 +880,12 @@
       } catch (e) { console.error('200WMA error:', e); }
     }
 
-    // === 全周期 VWAP 成本锚 (Hazen Lee): BTC(币安) 3 锚点 + IBIT(ETF) BTC 等价 ===
-    // 注: OKX 早期 BTC-USDT 历史不足 → 长周期 VWAP 偏高($62k), 只用 Binance(2017起最深)
+    // === 全周期 VWAP 成本锚 (Hazen Lee): 币安现货 + IBIT(ETF) 合成成交量加权, 3 锚点 ===
+    // 注: OKX 早期 BTC-USDT 历史不足 → 偏高, 只用 Binance(2017起最深); IBIT 经 worker 取(yahoo 无 CORS)
     const VWAP_ANCHORS = { '2017': 0, '2022': Date.UTC(2022, 10, 21), 'halv': Date.UTC(2024, 3, 20) };
-    // 通用单元格: 显示 $价格 + 现价/VWAP 倍数, 倍数按水下(红)/价值(金)/获利(绿)染色
+    let vwapBin = null;   // {2017:{usd,btc},...} 币安各锚点 Σ成交额(USD)/Σ成交量(BTC)
+    let vwapIbit = null;  // {price,vwap,vol,vwap_halving,vol_halving} 来自 /mnav
+    // 单元格: $合成VWAP + 现价/VWAP 倍数 (水下红/价值金/获利绿)
     function vwapCell(id, price) {
       const el = document.getElementById(id);
       if (!el || !price || currentPrice <= 0) return;
@@ -890,22 +893,24 @@
       const col = r < 1 ? 'var(--red)' : r < 1.5 ? 'var(--gold)' : 'var(--green)';
       el.innerHTML = '$' + Math.round(price).toLocaleString() + ' <span style="color:' + col + '">' + r.toFixed(2) + 'x</span>';
     }
-    function applyVwap(v) { // v = {2017,2022,halv} BTC VWAP
-      if (currentPrice > 0) document.getElementById('vwap-cur').textContent = '$' + Math.round(currentPrice).toLocaleString();
-      vwapCell('vwap-2017', v['2017']); vwapCell('vwap-2022', v['2022']); vwapCell('vwap-halv', v['halv']);
-    }
-    // IBIT: ETF 价 → BTC 等价 (× 现价BTC/现价IBIT)
-    function applyIbitVwap(ibit) {
-      if (!ibit || !ibit.price || currentPrice <= 0) return;
-      const k = currentPrice / ibit.price; // BTC$ per IBIT$
-      // 2017/2022 锚点早于 IBIT 上市(2024) → 用其全历史; 减半锚 → 减半起
-      vwapCell('ibit-2017', ibit.vwap ? ibit.vwap * k : 0);
-      vwapCell('ibit-2022', ibit.vwap ? ibit.vwap * k : 0);
-      vwapCell('ibit-halv', (ibit.vwap_halving || ibit.vwap) ? (ibit.vwap_halving || ibit.vwap) * k : 0);
+    // 合成 = (币安USD + IBIT USD) / (币安BTC + IBIT BTC等价量); s=BTC/股=IBIT价/BTC价
+    function renderVwap() {
+      if (!vwapBin || currentPrice <= 0) return;
+      const s = (vwapIbit && vwapIbit.price) ? (vwapIbit.price / currentPrice) : null;
+      function combo(key, iVwap, iVol) {
+        const bin = vwapBin[key]; if (!bin) return null;
+        let num = bin.usd, den = bin.btc;
+        if (s && iVwap && iVol) { num += iVwap * iVol; den += iVol * s; } // 叠加 IBIT 成交额 + BTC等价量
+        return den > 0 ? num / den : null;
+      }
+      const iv = vwapIbit || {};
+      vwapCell('vwap-2017', combo('2017', iv.vwap, iv.vol));                          // 锚<2024 → IBIT 全历史
+      vwapCell('vwap-2022', combo('2022', iv.vwap, iv.vol));
+      vwapCell('vwap-halv', combo('halv', iv.vwap_halving || iv.vwap, iv.vol_halving || iv.vol)); // 减半起
     }
     async function fetchVwap() {
       try {
-        // BTC 3 锚点 = Σ(成交额)/Σ(成交量), Binance 周线全历史 (~460 周, 2017 起)
+        // 币安各锚点 Σ成交额/Σ成交量, 周线全历史 (~460 周, 2017 起)
         const res = await fetchTimeout('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1w&limit=1000', 9000);
         const kl = await res.json(); // [openTime,o,h,l,c,vol,closeTime,quoteVol,...]
         const acc = { '2017': [0, 0], '2022': [0, 0], 'halv': [0, 0] };
@@ -913,9 +918,8 @@
           const b = parseFloat(c[5]), q = parseFloat(c[7]);
           for (const key in VWAP_ANCHORS) { if (c[0] >= VWAP_ANCHORS[key]) { acc[key][0] += q; acc[key][1] += b; } }
         });
-        const v = {};
-        for (const key in acc) { if (acc[key][1] > 0) v[key] = acc[key][0] / acc[key][1]; }
-        applyVwap(v); cacheSet('vwap', v);
+        vwapBin = { '2017': { usd: acc['2017'][0], btc: acc['2017'][1] }, '2022': { usd: acc['2022'][0], btc: acc['2022'][1] }, 'halv': { usd: acc['halv'][0], btc: acc['halv'][1] } };
+        cacheSet('vwapBin', vwapBin); renderVwap();
       } catch (e) { console.error('VWAP error:', e); }
     }
 
