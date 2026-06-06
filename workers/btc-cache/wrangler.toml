@@ -1,0 +1,7 @@
+name = "btc-cache"
+main = "index.js"
+compatibility_date = "2024-11-01"
+
+[[kv_namespaces]]
+binding = "BTC_CACHE"
+id = "f29eeb4d022e4c20afaf871826cc90d4"
