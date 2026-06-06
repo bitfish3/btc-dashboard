@@ -555,8 +555,7 @@
       if (fng) applyFng(fng);
       const wma = cacheGet('wma200', 86400000);
       if (wma) applyWma200(wma);
-      const vwapC = cacheGet('vwapData', 604800000); // VWAP 周级缓存
-      if (vwapC) { vwapData = vwapC; renderVwap(); }
+      renderVwap(); // VWAP 数值已内置常量, 直接显示 (倍数随现价)
       const bp = cacheGet('bp', 86400000);
       if (bp) applyBp(bp);
       const halv = cacheGet('halving', 86400000);
@@ -872,9 +871,9 @@
     }
 
     // === 全周期 VWAP 成本锚 (Hazen Lee): 币安+Coinbase 现货 + IBIT(ETF) 三源合成 ===
-    // 每周由 scripts/vwap_compute.py 预计算 → /vwap.json。前端只读一个最终值 + 算实时倍数,
-    // 不再客户端多源拼装 → 刷新不再跳变 (Codex 已交叉验证 <0.5%)。
-    let vwapData = null;  // { anchors:{2017,2022,halv}, btc_at_compute, computed_at }
+    // 数值由 scripts/vwap_compute.py 每周直接写入下面这行常量并 push (网页不计算, 只显示存好的值 + 现价倍数)。
+    // 三源合成 = Σ(三源USD成交额)/Σ(三源BTC/BTC等价量); Codex 已交叉验证 <0.5%。
+    const VWAP_VALUES = { '2017': 32971, '2022': 51541, 'halv': 85221 }; // @vwap-auto
     function vwapCell(id, price) {
       const el = document.getElementById(id);
       if (!el || !price || currentPrice <= 0) return;
@@ -883,18 +882,9 @@
       el.innerHTML = '$' + Math.round(price).toLocaleString() + ' <span style="color:' + col + '">' + r.toFixed(2) + 'x</span>';
     }
     function renderVwap() {
-      if (!vwapData || !vwapData.anchors) return;
-      const a = vwapData.anchors;
-      vwapCell('vwap-2017', a['2017']); vwapCell('vwap-2022', a['2022']); vwapCell('vwap-halv', a['halv']);
-    }
-    async function fetchVwap() {
-      try {
-        // 周级 cache-bust: 同一周复用缓存, 跨周才拉新预计算值
-        const wk = Math.floor(Date.now() / 6048e5);
-        const res = await fetchTimeout('/vwap.json?w=' + wk, 8000);
-        const j = await res.json();
-        if (j && j.anchors) { vwapData = j; cacheSet('vwapData', j); renderVwap(); }
-      } catch (e) { console.error('VWAP error:', e); }
+      vwapCell('vwap-2017', VWAP_VALUES['2017']);
+      vwapCell('vwap-2022', VWAP_VALUES['2022']);
+      vwapCell('vwap-halv', VWAP_VALUES['halv']);
     }
 
     function applyHalving(d) {
@@ -1069,7 +1059,7 @@
     loadCache(); // 立即显示缓存数据
     fetchData();
     fetchFng();
-    setTimeout(() => { fetchAhr999(); fetchWma200(); fetchVwap(); fetchHalving(); fetchBalancedPrice(); fetchMvrv(); fetchProbs(); fetchStrc(); }, 2000);
+    setTimeout(() => { fetchAhr999(); fetchWma200(); fetchHalving(); fetchBalancedPrice(); fetchMvrv(); fetchProbs(); fetchStrc(); }, 2000);
     setTimeout(fetchMnavAll, 4000); // mNAV 延后确保 BTC 价格已加载
     setInterval(fetchData, 15000);
     setInterval(fetchFng, 600000);

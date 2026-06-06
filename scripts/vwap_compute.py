@@ -7,11 +7,10 @@
 由 launchd 每周触发, 前端只读这个 json + 算实时倍数, 不再客户端多源拼装(避免刷新跳变).
 经 Codex 独立交叉验证, 三锚点误差 <0.5%.
 """
-import urllib.request, json, datetime, time, subprocess, sys
+import urllib.request, json, datetime, time, subprocess, sys, re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent  # ~/P/btc-dashboard
-OUT = ROOT / "vwap.json"
 
 
 def get(url, timeout=25):
@@ -104,33 +103,40 @@ def main():
     bn = binance_sums()
     cb, cb_days = coinbase_sums()
     ib, ipx, s = ibit_parts(btc)
-    anchors = {}
-    for a in ("2017", "2022", "halv"):
-        num = bn[a][0] + cb[a][0] + ib[a][0]
-        den = bn[a][1] + cb[a][1] + ib[a][1]
-        anchors[a] = round(num / den, 2)
-    out = {
-        "computed_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-        "method": "blended VWAP/anchor = Σ(USD turnover: Binance+Coinbase spot + IBIT ETF) / Σ(BTC-equiv volume). IBIT BTC-equiv via current IBIT/BTC ratio. Cross-checked by Codex (<0.5%).",
-        "btc_at_compute": round(btc, 2),
-        "ibit_at_compute": ipx,
-        "coinbase_days": cb_days,
-        "anchors": anchors,
-    }
-    OUT.write_text(json.dumps(out, indent=2, ensure_ascii=False))
-    print("wrote", OUT, anchors, "| cb_days", cb_days)
+    a = {}
+    for k in ("2017", "2022", "halv"):
+        num = bn[k][0] + cb[k][0] + ib[k][0]
+        den = bn[k][1] + cb[k][1] + ib[k][1]
+        a[k] = int(round(num / den))
 
-    # git commit + push (仅当 vwap.json 变化) → CF 自动部署
-    subprocess.run(["git", "-C", str(ROOT), "add", "vwap.json"], check=True)
+    # 直接把数值写进 index.html 的 VWAP_VALUES 常量行 (网页只显示存好的值, 不计算)
+    index = ROOT / "index.html"
+    html = index.read_text()
+    new_line = ("    const VWAP_VALUES = { "
+                f"'2017': {a['2017']}, '2022': {a['2022']}, 'halv': {a['halv']} "
+                "}; // @vwap-auto")
+    html2, n = re.subn(r"    const VWAP_VALUES = \{[^}]*\}; // @vwap-auto", new_line, html)
+    if n != 1:
+        sys.exit(f"ERROR: VWAP_VALUES 锚行未匹配 (n={n}), 放弃")
+    print(f"computed {a} | cb_days {cb_days} | btc {round(btc)} | ibit {ipx}")
+    if html2 == html:
+        print("no change")
+        return
+    index.write_text(html2)
+
+    # 删掉旧的 vwap.json (已改为内置常量)
+    if (ROOT / "vwap.json").exists():
+        subprocess.run(["git", "-C", str(ROOT), "rm", "-q", "vwap.json"], check=False)
+    subprocess.run(["git", "-C", str(ROOT), "add", "index.html"], check=True)
     r = subprocess.run(
-        ["git", "-C", str(ROOT), "commit", "-m", f"chore(vwap): 每周刷新 {anchors}"],
+        ["git", "-C", str(ROOT), "commit", "-m", f"chore(vwap): 每周刷新数值 {a}"],
         capture_output=True, text=True,
     )
     if r.returncode == 0:
         subprocess.run(["git", "-C", str(ROOT), "push", "origin", "main"], check=True)
         print("committed + pushed")
     else:
-        print("no change:", (r.stdout or r.stderr).strip()[:200])
+        print("commit skipped:", (r.stdout or r.stderr).strip()[:200])
 
 
 if __name__ == "__main__":
