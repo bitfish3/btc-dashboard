@@ -370,6 +370,20 @@
         </div>
       </div>
       <div class="cycle-card">
+        <div class="cycle-card-title">SOPR (卖出盈亏比 · 卖出潮信号)</div>
+        <div class="cycle-main" id="sopr-value" style="color:var(--green)">--</div>
+        <div class="cycle-sub">
+          <span id="sopr-note" style="color:var(--dim)">&lt;1 亏损投降(卖出潮未尽) · =1 临界 · &gt;1 获利了结</span>
+        </div>
+      </div>
+      <div class="cycle-card">
+        <div class="cycle-card-title">Puell Multiple (矿工投降)</div>
+        <div class="cycle-main" id="puell-value" style="color:var(--green)">--</div>
+        <div class="cycle-sub">
+          <span id="puell-note" style="color:var(--dim)">&lt;0.5 矿工深度投降(历史大底) · 0.5~1 承压 · &gt;4 顶部</span>
+        </div>
+      </div>
+      <div class="cycle-card">
         <div class="cycle-card-title">⏳ 减半倒计时</div>
         <div class="cycle-main" id="halving-days" style="color:var(--gold)">--- 天</div>
         <div class="cycle-sub">
@@ -764,6 +778,47 @@
       } catch (e) { console.error('MVRV error:', e); }
     }
 
+    function applySopr(sopr) {
+      const el = document.getElementById('sopr-value');
+      el.textContent = sopr.toFixed(3);
+      const noteEl = document.getElementById('sopr-note');
+      if (sopr < 1) { el.style.color = 'var(--green)'; noteEl.textContent = '🟢 亏损投降进行中 — 卖出潮未尽，等回 1.0 上方=投降尽再上移首批'; noteEl.style.color = 'var(--green)'; }
+      else if (sopr < 1.03) { el.style.color = 'var(--gold)'; noteEl.textContent = '⚖️ 临界 1.0 — 卖出潮接近走完，关键观察窗'; noteEl.style.color = 'var(--gold)'; }
+      else { el.style.color = 'var(--text)'; noteEl.textContent = '📈 获利了结主导 — 卖出潮已过'; noteEl.style.color = 'var(--dim)'; }
+    }
+
+    async function fetchSopr() {
+      try {
+        const res = await fetchTimeout('https://looknode-proxy.corms-cushier-0l.workers.dev/sopr', 10000);
+        const json = await res.json();
+        if (json.code !== 100 || !json.data || json.data.length === 0) return;
+        const sopr = json.data[json.data.length - 1].v;
+        applySopr(sopr);
+        cacheSet('sopr', sopr);
+      } catch (e) { console.error('SOPR error:', e); }
+    }
+
+    function applyPuell(p) {
+      const el = document.getElementById('puell-value');
+      el.textContent = p.toFixed(2);
+      const noteEl = document.getElementById('puell-note');
+      if (p < 0.5) { el.style.color = 'var(--green)'; noteEl.textContent = '🟢 矿工深度投降 — 历史大底信号区'; noteEl.style.color = 'var(--green)'; }
+      else if (p < 1) { el.style.color = 'var(--green)'; noteEl.textContent = '🟢 矿工承压 — 收入低于年均，偏底部'; noteEl.style.color = 'var(--green)'; }
+      else if (p < 4) { el.style.color = 'var(--text)'; noteEl.textContent = '矿工正常区间'; noteEl.style.color = 'var(--dim)'; }
+      else { el.style.color = 'var(--red)'; noteEl.textContent = '🔴 矿工高利润 — 历史顶部区间'; noteEl.style.color = 'var(--red)'; }
+    }
+
+    async function fetchPuell() {
+      try {
+        const res = await fetchTimeout('https://looknode-proxy.corms-cushier-0l.workers.dev/puellMultiple', 10000);
+        const json = await res.json();
+        if (json.code !== 100 || !json.data || json.data.length === 0) return;
+        const p = json.data[json.data.length - 1].v;
+        applyPuell(p);
+        cacheSet('puell', p);
+      } catch (e) { console.error('Puell error:', e); }
+    }
+
     function applyMnav(id, val) {
       const el = document.getElementById(id);
       el.textContent = val.toFixed(2) + 'x';
@@ -1059,7 +1114,7 @@
     loadCache(); // 立即显示缓存数据
     fetchData();
     fetchFng();
-    setTimeout(() => { fetchAhr999(); fetchWma200(); fetchHalving(); fetchBalancedPrice(); fetchMvrv(); fetchProbs(); fetchStrc(); }, 2000);
+    setTimeout(() => { fetchAhr999(); fetchWma200(); fetchHalving(); fetchBalancedPrice(); fetchMvrv(); fetchSopr(); fetchPuell(); fetchProbs(); fetchStrc(); }, 2000);
     setTimeout(fetchMnavAll, 4000); // mNAV 延后确保 BTC 价格已加载
     setInterval(fetchData, 15000);
     setInterval(fetchFng, 600000);
