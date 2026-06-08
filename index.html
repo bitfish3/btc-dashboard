@@ -974,7 +974,7 @@
     // === 全周期 VWAP 成本锚 (Hazen Lee): 币安+Coinbase 现货 + IBIT(ETF) 三源合成 ===
     // 数值由 scripts/vwap_compute.py 每周直接写入下面这行常量并 push (网页不计算, 只显示存好的值 + 现价倍数)。
     // 三源合成 = Σ(三源USD成交额)/Σ(三源BTC/BTC等价量); Codex 已交叉验证 <0.5%。
-    const VWAP_VALUES = { '2017': 33007, '2022': 51679, 'halv': 85721 }; // @vwap-auto
+    const VWAP_VALUES = { '2017': 33106, '2022': 52037, 'halv': 87029 }; // @vwap-auto
     function vwapCell(id, price) {
       const el = document.getElementById(id);
       if (!el || !price || currentPrice <= 0) return;
