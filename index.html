@@ -602,19 +602,19 @@
       const mvrv = cacheGet('mvrv', 86400000);
       if (mvrv) applyMvrv(mvrv);
       try {
-        const mstrC = cacheGet('mstr-mnav', 86400000);
+        const mstrC = cacheGet('mstr-mnav', 1800000);
         if (mstrC && mstrC.ev) {
           applyMnav('mstr-mnav', mstrC.ev);
           document.getElementById('mstr-basic').textContent = mstrC.basic.toFixed(2) + 'x';
           document.getElementById('mstr-ev').textContent = mstrC.ev.toFixed(2) + 'x';
           document.getElementById('mstr-detail').textContent = 'BTC ' + mstrC.holdings.toLocaleString() + ' | $' + mstrC.price;
         }
-        const bmnrC = cacheGet('bmnr-mnav', 86400000);
+        const bmnrC = cacheGet('bmnr-mnav', 1800000);
         if (bmnrC && bmnrC.mnav) { applyMnav('bmnr-mnav', bmnrC.mnav); document.getElementById('bmnr-detail').textContent = 'ETH ' + bmnrC.eth.toLocaleString() + ' | $' + bmnrC.price; }
       } catch(e) { console.error('mNAV cache load error:', e); }
       const probsC = cacheGet('probs', 3600000);
       if (probsC) applyProbs(probsC);
-      const strcC = cacheGet('strc', 86400000);
+      const strcC = cacheGet('strc', 1800000);
       if (strcC) applyStrc(strcC.fw, strcC.iss);
     }
 
