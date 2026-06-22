@@ -974,7 +974,7 @@
     // === 全周期 VWAP 成本锚 (Hazen Lee): 币安+Coinbase 现货 + IBIT(ETF) 三源合成 ===
     // 数值由 scripts/vwap_compute.py 每周直接写入下面这行常量并 push (网页不计算, 只显示存好的值 + 现价倍数)。
     // 三源合成 = Σ(三源USD成交额)/Σ(三源BTC/BTC等价量); Codex 已交叉验证 <0.5%。
-    const VWAP_VALUES = { '2017': 33115, '2022': 51891, 'halv': 86169 }; // @vwap-auto
+    const VWAP_VALUES = { '2017': 33129, '2022': 51808, 'halv': 85617 }; // @vwap-auto
     function vwapCell(id, price) {
       const el = document.getElementById(id);
       if (!el || !price || currentPrice <= 0) return;
@@ -990,7 +990,7 @@
 
     // === BTC 资产相关性 (与黄金 GLD / 纳指 QQQ, 日收益滚动) ===
     // 数值由 scripts/vwap_compute.py 每周写入下行常量 (网页只显示, 不计算)。
-    const CORR_VALUES = { gold: { d30: 0.39, d90: 0.34, d180: 0.22, d252: 0.21 }, qqq: { d30: 0.55, d90: 0.5, d180: 0.53, d252: 0.51 } }; // @corr-auto
+    const CORR_VALUES = { gold: { d30: 0.52, d90: 0.29, d180: 0.23, d252: 0.22 }, qqq: { d30: 0.55, d90: 0.48, d180: 0.52, d252: 0.5 } }; // @corr-auto
     function corrCell(id, v) {
       const el = document.getElementById(id);
       if (!el) return;
