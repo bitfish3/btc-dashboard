@@ -495,6 +495,33 @@
       </div>
     </div>
 
+    <div class="cycle-row" style="margin-top:-4px">
+      <div class="cycle-card">
+        <div class="cycle-card-title">STRC 单券 Runway</div>
+        <div class="cycle-main" id="strc-runway" style="color:var(--gold)">--月</div>
+        <div class="cycle-sub">
+          只看 STRC 股息覆盖<br>
+          <span id="strc-runway-note" style="color:var(--dim)">保守口径 --</span>
+        </div>
+      </div>
+      <div class="cycle-card">
+        <div class="cycle-card-title">全局 Runway</div>
+        <div class="cycle-main" id="global-runway" style="color:var(--gold)">--月</div>
+        <div class="cycle-sub">
+          全 preferred 股息 + 债息<br>
+          <span id="global-runway-note" style="color:var(--dim)">9M 降仓 · 6M 失去 income 属性</span>
+        </div>
+      </div>
+      <div class="cycle-card">
+        <div class="cycle-card-title">现金覆盖</div>
+        <div class="cycle-main" id="runway-cash" style="color:var(--blue)">$--</div>
+        <div class="cycle-sub">
+          年现金需求 <span id="runway-need" style="color:var(--text)">$--</span><br>
+          <span id="runway-headroom" style="color:var(--dim)">9M 余量 --</span>
+        </div>
+      </div>
+    </div>
+
     <div class="elec-control">
       <span class="elec-label">电费:</span>
       <input type="range" class="elec-slider" id="electricity" min="0.02" max="0.15" step="0.005" value="0.06">
@@ -1125,6 +1152,20 @@
     }
 
     // === MSTR STRC 飞轮 (flywheel-monitor + strc-issuance snapshot.json) ===
+    function fmtBillions(v) {
+      if (v == null || !isFinite(v)) return '$--';
+      return '$' + (v / 1e9).toFixed(2) + 'B';
+    }
+    function fmtMillions(v) {
+      if (v == null || !isFinite(v)) return '$--';
+      return '$' + (v / 1e6).toFixed(1) + 'M';
+    }
+    function runwayColor(months) {
+      if (months == null || !isFinite(months)) return 'var(--gold)';
+      if (months < 9) return 'var(--red)';
+      if (months < 12) return 'var(--gold)';
+      return 'var(--green)';
+    }
     function applyStrc(fw, iss) {
       if (fw) {
         const strc = fw.strc || {};
@@ -1150,6 +1191,31 @@
         const sm = (fw.strategy_official || {}).strc_metrics || {};
         if (sm.shares) {
           document.getElementById('strc-issued').textContent = '$' + (sm.shares * 100 / 1e9).toFixed(2) + 'B';
+        }
+        const sr = fw.strc_runway || {};
+        if (sr.runway_months != null) {
+          const el = document.getElementById('strc-runway');
+          el.textContent = sr.runway_months.toFixed(1) + '月';
+          el.style.color = runwayColor(sr.runway_months);
+          const cons = sr.runway_months_conservative != null
+            ? '保守口径 ' + sr.runway_months_conservative.toFixed(1) + '月'
+            : '保守口径 --';
+          document.getElementById('strc-runway-note').textContent =
+            cons + ' · 月股息 ' + fmtMillions(sr.monthly_dividend);
+        }
+        const gr = fw.global_runway || {};
+        if (gr.runway_months != null) {
+          const el = document.getElementById('global-runway');
+          el.textContent = gr.runway_months.toFixed(1) + '月';
+          el.style.color = runwayColor(gr.runway_months);
+          document.getElementById('global-runway-note').textContent =
+            '状态 ' + (gr.status || '--') + ' · 债息假设 ' + ((gr.debt_interest_rate || 0) * 100).toFixed(1) + '%';
+        }
+        if (gr.cash != null) document.getElementById('runway-cash').textContent = fmtBillions(gr.cash);
+        if (gr.annual_cash_need != null) document.getElementById('runway-need').textContent = fmtBillions(gr.annual_cash_need) + '/年';
+        if (gr.headroom_to_9m != null || gr.headroom_to_6m != null) {
+          document.getElementById('runway-headroom').textContent =
+            '9M余量 ' + fmtMillions(gr.headroom_to_9m) + ' · 6M余量 ' + fmtMillions(gr.headroom_to_6m);
         }
       }
       if (iss && iss.parsed && iss.parsed.strc && iss.parsed.strc.atm_remaining_m != null) {
