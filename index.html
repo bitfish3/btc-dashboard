@@ -918,7 +918,7 @@
           var btcValue = m.btc_holdings * btcPrice;
           var mcap = m.stock_price * m.shares;
           var basicMnav = mcap / btcValue;
-          var evMnav = (mcap + m.debt + m.pref) / (btcValue + m.cash);
+          var evMnav = (mcap + m.debt + m.pref - m.cash) / btcValue;
           applyMnav('mstr-mnav', evMnav);
           document.getElementById('mstr-basic').textContent = basicMnav.toFixed(2) + 'x';
           document.getElementById('mstr-basic').style.color = basicMnav < 1 ? 'var(--green)' : 'var(--gold)';
