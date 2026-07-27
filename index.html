@@ -1025,7 +1025,7 @@
 
     // === BTC 资产相关性 (与黄金 GLD / 纳指 QQQ, 日收益滚动) ===
     // 数值由 scripts/vwap_compute.py 每周写入下行常量 (网页只显示, 不计算)。
-    const CORR_VALUES = { gold: { d30: 0.72, d90: 0.45, d180: 0.27, d252: 0.25 }, qqq: { d30: 0.42, d90: 0.44, d180: 0.47, d252: 0.48 } }; // @corr-auto
+    const CORR_VALUES = { gold: { d30: 0.67, d90: 0.44, d180: 0.27, d252: 0.25 }, qqq: { d30: 0.41, d90: 0.44, d180: 0.46, d252: 0.48 } }; // @corr-auto
     function corrCell(id, v) {
       const el = document.getElementById(id);
       if (!el) return;
