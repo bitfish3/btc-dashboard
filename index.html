@@ -95,6 +95,45 @@
     .fng-status { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
     .fng-desc { font-size: 12px; color: var(--dim); line-height: 1.4; }
 
+    /* 周期钟摆 · 综合判断 */
+    .pendulum-section {
+      display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+      margin-bottom: 16px; padding: 18px 22px;
+      background: linear-gradient(135deg, var(--card), rgba(247,147,26,0.05));
+      border-radius: 12px; border: 1px solid var(--border);
+    }
+    .pend-gauge { position: relative; width: 280px; height: 168px; flex-shrink: 0; margin: 0 auto; }
+    .pend-needle {
+      position: absolute; bottom: 12px; left: 50%;
+      width: 3px; height: 116px; background: #fff;
+      transform-origin: bottom center; margin-left: -1.5px;
+      border-radius: 3px; transition: transform 0.9s cubic-bezier(.34,1.35,.64,1);
+      box-shadow: 0 0 6px rgba(255,255,255,0.5);
+    }
+    .pend-needle::after {
+      content: ''; position: absolute; bottom: -7px; left: -5.5px;
+      width: 14px; height: 14px; background: #fff; border-radius: 50%;
+      box-shadow: 0 0 6px rgba(255,255,255,0.6);
+    }
+    .pend-score {
+      position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+      font-size: 34px; font-weight: 800; z-index: 5; letter-spacing: -1px;
+    }
+    .pend-zone-scale {
+      display: flex; justify-content: space-between; width: 250px;
+      margin: 6px auto 0; font-size: 9px; color: var(--dim);
+    }
+    .pend-info { flex: 1; min-width: 240px; }
+    .pend-title { font-size: 12px; color: var(--dim); margin-bottom: 6px; line-height: 1.4; }
+    .pend-zone { font-size: 26px; font-weight: 800; margin-bottom: 6px; }
+    .pend-verdict { font-size: 14px; color: var(--text); line-height: 1.55; margin-bottom: 10px; }
+    .pend-breakdown { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pend-chip {
+      font-size: 11px; color: var(--dim); padding: 2px 8px;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 6px;
+    }
+    .pend-chip b { color: var(--text); font-weight: 700; }
+
     /* 周期指标行 */
     .cycle-row {
       display: flex; flex-wrap: wrap; gap: 12px;
@@ -342,6 +381,28 @@
         <div class="fng-title">恐惧 & 贪婪指数</div>
         <div class="fng-status" id="fng-status">--</div>
         <div class="fng-desc" id="fng-desc">加载中...</div>
+      </div>
+    </div>
+
+    <!-- 周期钟摆 · 链上综合判断 -->
+    <div class="pendulum-section">
+      <div class="pend-gauge">
+        <svg width="280" height="150" viewBox="0 0 280 150">
+          <path d="M20,138 A120,120 0 0,1 42.9,67.5" fill="none" stroke="#2ea043" stroke-width="13" stroke-linecap="round"/>
+          <path d="M42.9,67.5 A120,120 0 0,1 102.9,23.9" fill="none" stroke="#4cd964" stroke-width="13"/>
+          <path d="M102.9,23.9 A120,120 0 0,1 177.1,23.9" fill="none" stroke="#f0d000" stroke-width="13"/>
+          <path d="M177.1,23.9 A120,120 0 0,1 237.1,67.5" fill="none" stroke="#f7931a" stroke-width="13"/>
+          <path d="M237.1,67.5 A120,120 0 0,1 260,138" fill="none" stroke="#e74c5f" stroke-width="13" stroke-linecap="round"/>
+        </svg>
+        <div class="pend-needle" id="pend-needle" style="transform:rotate(-90deg)"></div>
+        <div class="pend-score" id="pend-score">--</div>
+        <div class="pend-zone-scale"><span>投降</span><span>累积</span><span>中性</span><span>过热</span><span>狂热</span></div>
+      </div>
+      <div class="pend-info">
+        <div class="pend-title">🕰️ 周期钟摆 · 链上综合判断（0 深熊投降 → 100 泡沫狂热）</div>
+        <div class="pend-zone" id="pend-zone">计算中…</div>
+        <div class="pend-verdict" id="pend-verdict">7 项链上指标加权合成，规避单指标噪声</div>
+        <div class="pend-breakdown" id="pend-breakdown"></div>
       </div>
     </div>
 
@@ -1065,6 +1126,57 @@
       } catch (e) { console.error('Halving error:', e); }
     }
 
+    // === 周期钟摆：多指标归一 → 加权合成一根针 ===
+    // 分段线性归一：0=深熊投降, 100=泡沫狂热。锚点对齐各卡阈值。
+    function pendNorm(v, pts) {
+      if (v <= pts[0][0]) return pts[0][1];
+      for (let i = 1; i < pts.length; i++) {
+        if (v <= pts[i][0]) {
+          const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
+          return y0 + (y1 - y0) * (v - x0) / (x1 - x0);
+        }
+      }
+      return pts[pts.length - 1][1];
+    }
+
+    function computeCyclePendulum() {
+      const mvrv = cacheGet('mvrv', 86400000), z = cacheGet('mvrvz', 86400000),
+            sopr = cacheGet('sopr', 86400000), puell = cacheGet('puell', 86400000),
+            bp = cacheGet('bp', 86400000), fng = cacheGet('fng', 7200000);
+      // [标签, 归一分, 权重]
+      const parts = [];
+      if (mvrv != null)  parts.push(['MVRV',    pendNorm(mvrv,  [[0.8,0],[1,20],[2,45],[3.5,80],[4.5,100]]), 0.20]);
+      if (z != null)     parts.push(['MVRV-Z',  pendNorm(z,     [[-0.5,0],[0,15],[2,40],[5,75],[8,100]]),    0.20]);
+      if (bp && currentPrice > 0)
+                         parts.push(['价/BP',   pendNorm(currentPrice/bp, [[1,5],[1.5,30],[3,65],[5,95]]),  0.15]);
+      if (puell != null) parts.push(['Puell',   pendNorm(puell, [[0.4,3],[0.5,12],[1,35],[2,60],[4,85],[6,100]]), 0.15]);
+      if (sopr != null)  parts.push(['SOPR',    pendNorm(sopr,  [[0.96,5],[1,30],[1.03,50],[1.08,75],[1.12,95]]), 0.10]);
+      parts.push(['PSIP', pendNorm(46, [[34,5],[45,25],[55,45],[75,75],[95,100]]), 0.10]); // 常量, 与 PSIP 卡一致
+      if (fng != null)   parts.push(['F&G', Math.max(0, Math.min(100, fng)), 0.10]);
+      if (!parts.length) return;
+
+      const wsum = parts.reduce((a, p) => a + p[2], 0);
+      const score = parts.reduce((a, p) => a + p[1] * p[2], 0) / wsum;
+
+      const angle = (score / 100) * 180 - 90;
+      document.getElementById('pend-needle').style.transform = 'rotate(' + angle + 'deg)';
+      const sEl = document.getElementById('pend-score');
+      sEl.textContent = Math.round(score);
+
+      let zone, color, verdict;
+      if (score < 20)      { zone = '深熊·投降';  color = '#2ea043'; verdict = '🟢🟢 极度低估 — 历史大底信号区，重仓 / 加速定投'; }
+      else if (score < 40) { zone = '低估·累积';  color = '#4cd964'; verdict = '🟢 悲观累积区 — 链上低估、情绪恐惧，定投友好'; }
+      else if (score < 60) { zone = '中性·均衡';  color = '#f0d000'; verdict = '⚪ 估值回归中性 — 顺势持有，不追高不砍底'; }
+      else if (score < 80) { zone = '过热·乐观';  color = '#f7931a'; verdict = '🟡 乐观过热 — 分批减仓、收紧止盈纪律'; }
+      else                 { zone = '泡沫·狂热';  color = '#e74c5f'; verdict = '🔴 狂热泡沫区 — 历史顶部区间，主动出货'; }
+      sEl.style.color = color;
+      const zEl = document.getElementById('pend-zone');
+      zEl.textContent = zone; zEl.style.color = color;
+      document.getElementById('pend-verdict').textContent = verdict;
+      document.getElementById('pend-breakdown').innerHTML =
+        parts.map(p => '<span class="pend-chip">' + p[0] + ' <b>' + Math.round(p[1]) + '</b></span>').join('');
+    }
+
     function applyFng(val) {
       const angle = (val / 100) * 180 - 90;
       document.getElementById('fng-needle').style.transform = 'rotate(' + angle + 'deg)';
@@ -1252,6 +1364,8 @@
     fetchData();
     fetchFng();
     setTimeout(() => { fetchAhr999(); fetchWma200(); fetchHalving(); fetchBalancedPrice(); fetchMvrv(); fetchMvrvZ(); fetchSopr(); fetchPuell(); fetchProbs(); fetchStrc(); }, 2000);
+    setTimeout(computeCyclePendulum, 5500);
+    setInterval(computeCyclePendulum, 30000);
     setTimeout(fetchMnavAll, 4000); // mNAV 延后确保 BTC 价格已加载
     setInterval(fetchData, 15000);
     setInterval(fetchFng, 600000);
