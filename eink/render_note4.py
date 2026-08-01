@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """Render a calm, readable fuckbtc cycle card for the ZECTRIX NOTE4.
 
-The NOTE4 panel is physically 1-bit.  We therefore send a 12-level grayscale
+The NOTE4 panel is physically 1-bit.  We therefore send a 16-level grayscale
 source to the cloud API and let ``dither=true`` create perceived gray steps on
 the display.  The card intentionally shows only the cycle position, BTC price,
 and AHR999: the pendulum is the information architecture, not a dashboard dump.
@@ -22,7 +22,7 @@ from render_potato import compute, fetch_live
 
 W_DEFAULT, H_DEFAULT = 400, 300
 SCALE_DEFAULT = 3
-GRAY_LEVELS_DEFAULT = 12
+GRAY_LEVELS_DEFAULT = 16
 FONT_REGULAR_PATHS = (
     "/System/Library/Fonts/Hiragino Sans GB.ttc",
     "/System/Library/Fonts/STHeiti Medium.ttc",

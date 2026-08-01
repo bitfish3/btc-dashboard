@@ -62,7 +62,7 @@ def _multipart_image(image_path: Path, page_id: str) -> tuple[bytes, str]:
         b"\r\n",
         f"--{boundary}\r\n".encode(),
         # NOTE4 is a 1-bit panel, but the cloud's dither=true path preserves
-        # perceived grayscale from the 12-level source image.
+        # perceived grayscale from the 16-level source image.
         b'Content-Disposition: form-data; name="dither"\r\n\r\ntrue\r\n',
         f"--{boundary}\r\n".encode(),
         b'Content-Disposition: form-data; name="pageId"\r\n\r\n' + page_id.encode() + b"\r\n",
