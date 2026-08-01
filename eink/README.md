@@ -61,15 +61,15 @@ Shortcut 要能 `Get Contents of URL` 拉到图，所以 PNG 需公网可达。�
 NOTE4 不是土豆片：它是 400×300 的黑白 E-ink，图片通过极趣云 Open API 推送，设备在下一次同步时抓取。专用管线只展示 BTC 价格和 AHR999 定投指数：
 
 ```text
-render_note4.py  →  400×300 灰阶 PNG  →  push_note4.py  →  ZECTRIX page 1
-      (两个大号读数)                      (X-API-Key + dither) (设备同步后显示)
+render_note4.py  →  400×300 黑白 PNG  →  push_note4.py  →  ZECTRIX page 1
+      (两个大号读数)                      (X-API-Key + dither=false) (设备同步后显示)
 ```
 
 ### 凭证与首次验证
 
 1. 在 `https://cloud.zectrix.com` 的“开放 API”创建 API Key；API Key 只放 Avibe Vault，名称固定为 `ZECTRIX_API_KEY`，不要写进脚本、plist 或仓库。
 2. 从设备列表取得 NOTE4 的 `deviceId`（MAC 地址）。可放在启动项的 `ZECTRIX_DEVICE_ID` 环境变量中；它不是密钥，但不要把它硬编码进公开仓库。
-3. 先只渲染检查版式（16 段灰阶源图，云端负责 dithering）：
+3. 先只渲染检查版式（原生 1-bit 黑白，不制造网点）：
 
    ```bash
    python3 eink/push_note4.py --dry-run --out /tmp/fuckbtc-note4.png
