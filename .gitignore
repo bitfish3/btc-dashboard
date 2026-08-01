@@ -2,3 +2,5 @@
 .wrangler/
 scripts/__pycache__/
 scripts/*.log
+eink/__pycache__/
+eink/note4_cycle.png
