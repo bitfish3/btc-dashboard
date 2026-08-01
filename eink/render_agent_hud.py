@@ -209,10 +209,10 @@ def render(out: str | Path, *, now: float | None = None) -> dict[str, dict]:
     now = time.time() if now is None else now
     usage = load_all_usage(now=now)
     hi = build_frame(W_DEFAULT * SCALE_DEFAULT, H_DEFAULT * SCALE_DEFAULT, usage, now=now, scale=SCALE_DEFAULT)
-    image = ImageOps.grayscale(hi.resize((W_DEFAULT, H_DEFAULT), Image.Resampling.LANCZOS))
-    # Threshold after supersampling: edges are clean, but no intermediate gray
-    # survives into the upload, so the cloud cannot manufacture dot patterns.
-    image = image.point(lambda value: 0 if value < 160 else 255, mode="L")
+    # Use BOX, not LANCZOS: ringing pixels become dots on the panel. Then emit
+    # a genuine 1-bit PNG so the cloud has no gray samples to dither.
+    image = ImageOps.grayscale(hi.resize((W_DEFAULT, H_DEFAULT), Image.Resampling.BOX))
+    image = image.point(lambda value: 0 if value < 128 else 255, mode="L").convert("1")
     out_path = Path(out).expanduser()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     image.save(out_path, format="PNG", optimize=True)

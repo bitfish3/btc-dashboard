@@ -197,13 +197,14 @@ def render(
     print("[note4-eink] fetching live price and AHR999...")
     live = fetch_live()
     hi = build_frame(width * SCALE_DEFAULT, height * SCALE_DEFAULT, live, scale=SCALE_DEFAULT)
-    img = hi.resize((width, height), Image.Resampling.LANCZOS)
-    # Two levels are intentional: any intermediate tone would be converted
-    # to a dot pattern by the panel/cloud and recreate the muddy appearance
-    # this device is bad at displaying.
+    # BOX averages the supersampled edge once; LANCZOS ringing is exactly the
+    # kind of isolated pixel cloud that the NOTE4 turns into visible dots.
+    img = hi.resize((width, height), Image.Resampling.BOX)
+    # Two levels are intentional. Save PNG mode ``1`` rather than an 8-bit
+    # grayscale PNG so the cloud has no gray samples left to dither.
     if levels != 2:
         raise ValueError("NOTE4 output must use exactly 2 levels (black/white)")
-    gray = _quantize_gray(ImageOps.grayscale(img), levels)
+    gray = ImageOps.grayscale(img).point(lambda value: 0 if value < 128 else 255, mode="L").convert("1")
     out_path = Path(out).expanduser()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     gray.save(out_path, format="PNG", optimize=True)
@@ -211,7 +212,7 @@ def render(
     ahr_text = "--" if ahr is None else f"{float(ahr):.2f}"
     print(
         f"[note4-eink] price=${int(live['price']):,} ahr999={ahr_text} "
-        f"-> {out_path} ({width}x{height}, native 1-bit black/white)"
+        f"-> {out_path} ({width}x{height}, PNG mode=1 black/white)"
     )
     return float(live["price"]), ahr_text
 
