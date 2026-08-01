@@ -22,20 +22,24 @@ from render_potato import compute, fetch_live
 W_DEFAULT, H_DEFAULT = 400, 300
 SCALE_DEFAULT = 1
 GRAY_LEVELS_DEFAULT = 2
-FONT_REGULAR_PATHS = (
-    "/System/Library/Fonts/Hiragino Sans GB.ttc",
-    "/System/Library/Fonts/STHeiti Medium.ttc",
+# Pillow defaults to face 0 for a TTC.  On this Mac that is Heiti TC (the
+# traditional-Chinese face), not the Simplified Chinese face we want.  Select
+# Hiragino Sans GB W3/W6 explicitly: its glyphs are heavier and its simplified
+# CJK face survives a hard 1-bit threshold much better than the old fallback.
+FONT_REGULAR_SPECS = (
+    ("/System/Library/Fonts/Hiragino Sans GB.ttc", 0),  # W3
+    ("/System/Library/Fonts/STHeiti Medium.ttc", 1),  # Heiti SC Medium
 )
-FONT_BOLD_PATHS = (
-    "/System/Library/Fonts/STHeiti Medium.ttc",
-    "/System/Library/Fonts/Hiragino Sans GB.ttc",
+FONT_BOLD_SPECS = (
+    ("/System/Library/Fonts/Hiragino Sans GB.ttc", 2),  # W6
+    ("/System/Library/Fonts/STHeiti Medium.ttc", 1),  # Heiti SC Medium
 )
 
 
 def font(size: int, bold: bool = False):
-    for path in FONT_BOLD_PATHS if bold else FONT_REGULAR_PATHS:
+    for path, index in FONT_BOLD_SPECS if bold else FONT_REGULAR_SPECS:
         try:
-            return ImageFont.truetype(path, size)
+            return ImageFont.truetype(path, size, index=index)
         except OSError:
             continue
     return ImageFont.load_default()
@@ -65,7 +69,7 @@ def build_frame(width: int, height: int, live: dict, scale: int = SCALE_DEFAULT)
     score, _, _, _, _ = compute(live)
 
     # Header: one title, one divider, nothing that can turn into texture.
-    header_font = font(20 * scale, bold=True)
+    header_font = font(24 * scale, bold=True)
     draw.text((margin, 6 * scale), "BTC 周期钟摆", font=header_font, fill=0)
     draw.line((margin, 33 * scale, width - margin, 33 * scale), fill=0, width=2 * scale)
 
@@ -105,16 +109,16 @@ def build_frame(width: int, height: int, live: dict, scale: int = SCALE_DEFAULT)
     draw.ellipse((cx - hub, cy - hub, cx + hub, cy + hub), fill=0)
 
     score_text = str(round(score))
-    score_font = font(42 * scale, bold=True)
+    score_font = font(44 * scale, bold=True)
     draw.text((cx - _text_width(draw, score_text, score_font) / 2, 141 * scale), score_text, font=score_font, fill=0)
     phase = _phase(round(score))
-    phase_font = font(14 * scale, bold=True)
+    phase_font = font(17 * scale, bold=True)
     draw.text((cx - _text_width(draw, phase, phase_font) / 2, 185 * scale), phase, font=phase_font, fill=0)
 
     # The only two readouts: large, borderless, and separated by whitespace.
     draw.line((margin, 220 * scale, width - margin, 220 * scale), fill=0, width=2 * scale)
     label_font = font(10 * scale, bold=True)
-    value_font = font(24 * scale, bold=True)
+    value_font = font(28 * scale, bold=True)
     draw.text((margin, 231 * scale), "BTC", font=label_font, fill=0)
     draw.text((margin, 246 * scale), f"${int(live['price']):,}", font=value_font, fill=0)
     right_x = 215 * scale
