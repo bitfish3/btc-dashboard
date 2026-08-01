@@ -12,16 +12,15 @@ from __future__ import annotations
 
 import argparse
 import math
-from datetime import datetime
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageFont
 
 from render_potato import compute, fetch_live
 
 
 W_DEFAULT, H_DEFAULT = 400, 300
-SCALE_DEFAULT = 3
+SCALE_DEFAULT = 1
 GRAY_LEVELS_DEFAULT = 2
 FONT_REGULAR_PATHS = (
     "/System/Library/Fonts/Hiragino Sans GB.ttc",
@@ -46,38 +45,6 @@ def _text_width(draw: ImageDraw.ImageDraw, text: str, fnt: ImageFont.ImageFont) 
     return draw.textlength(text, font=fnt)
 
 
-def _draw_readout(
-    draw: ImageDraw.ImageDraw,
-    x: int,
-    y: int,
-    w: int,
-    h: int,
-    label: str,
-    value: str,
-    scale: int,
-    fill: int,
-) -> None:
-    draw.rounded_rectangle((x, y, x + w, y + h), radius=8 * scale, fill=fill, outline=0, width=2 * scale)
-    # Solid geometry survives NOTE4's 1-bit panel; no gray/dither field.
-    draw.rectangle((x + 10 * scale, y + 10 * scale, x + 16 * scale, y + h - 10 * scale), fill=0)
-    label_font = font(10 * scale, bold=True)
-    value_font = font(26 * scale, bold=True)
-    draw.text((x + 26 * scale, y + 8 * scale), label, font=label_font, fill=0)
-    draw.text(
-        (x + w - 14 * scale - _text_width(draw, value, value_font), y + 15 * scale),
-        value,
-        font=value_font,
-        fill=0,
-    )
-
-
-def _quantize_gray(image: Image.Image, levels: int) -> Image.Image:
-    if levels < 2 or levels > 256:
-        raise ValueError("levels must be between 2 and 256")
-    step = 255 / (levels - 1)
-    return image.point(lambda value: int(round(value / step) * step))
-
-
 def _phase(score: float) -> str:
     if score < 25:
         return "深熊"
@@ -89,34 +56,45 @@ def _phase(score: float) -> str:
 
 
 def build_frame(width: int, height: int, live: dict, scale: int = SCALE_DEFAULT) -> Image.Image:
-    """Build a pendulum-first frame for a 1-bit panel."""
-    paper = 255
-    image = Image.new("L", (width, height), paper)
+    """Build a simple poster-like pendulum frame for a 1-bit panel."""
+    # Draw directly at the target raster. There is no antialias pass to turn
+    # into gray dots later, and no rounded micro-decoration to muddy the page.
+    image = Image.new("1", (width, height), 1)
     draw = ImageDraw.Draw(image)
-    margin = 14 * scale
+    margin = 16 * scale
     score, _, _, _, _ = compute(live)
 
-    # Header: the pendulum is the primary object on page 1.
-    header_font = font(19 * scale, bold=True)
-    draw.text((margin, 5 * scale), "BTC 周期钟摆", font=header_font, fill=0)
-    stamp = datetime.now().strftime("%m-%d %H:%M")
-    stamp_font = font(10 * scale, bold=True)
-    draw.text(
-        (width - margin - _text_width(draw, stamp, stamp_font), 11 * scale),
-        stamp,
-        font=stamp_font,
-        fill=0,
-    )
-    draw.line((margin, 34 * scale, width - margin, 34 * scale), fill=0, width=scale)
+    # Header: one title, one divider, nothing that can turn into texture.
+    header_font = font(20 * scale, bold=True)
+    draw.text((margin, 6 * scale), "BTC 周期钟摆", font=header_font, fill=0)
+    draw.line((margin, 33 * scale, width - margin, 33 * scale), fill=0, width=2 * scale)
 
-    # Four solid stroke-width steps are the grayscale substitute that survives
-    # a physically 1-bit panel: light -> heavy, without a dotted dither field.
-    cx, cy = width // 2, 145 * scale
-    radius = 98 * scale
+    # A single thick arc, with the active quadrant made heavier. The four
+    # sectors remain readable as geometry rather than fake gray levels.
+    cx, cy = width // 2, 132 * scale
+    radius = 91 * scale
     bbox = (cx - radius, cy - radius, cx + radius, cy + radius)
-    widths = (4 * scale, 8 * scale, 12 * scale, 16 * scale)
-    for index, stroke in enumerate(widths):
-        draw.arc(bbox, 180 + index * 45, 180 + (index + 1) * 45, fill=0, width=stroke)
+    draw.arc(bbox, 180, 360, fill=0, width=8 * scale)
+    active = min(3, max(0, int(max(0.0, min(99.999, score)) // 25)))
+    start = 180 + active * 45 + 2
+    end = 180 + (active + 1) * 45 - 2
+    draw.arc(bbox, start, end, fill=0, width=16 * scale)
+
+    # Four clean boundary ticks make the quadrants explicit.
+    for degrees in (180, 225, 270, 315, 360):
+        angle = math.radians(degrees)
+        inner = radius - 12 * scale
+        outer = radius + 10 * scale
+        draw.line(
+            (
+                cx + inner * math.cos(angle),
+                cy + inner * math.sin(angle),
+                cx + outer * math.cos(angle),
+                cy + outer * math.sin(angle),
+            ),
+            fill=0,
+            width=3 * scale,
+        )
 
     # Needle: score 0 = far left, 100 = far right.
     angle = math.radians(180 + max(0.0, min(100.0, score)) / 100.0 * 180)
@@ -127,62 +105,23 @@ def build_frame(width: int, height: int, live: dict, scale: int = SCALE_DEFAULT)
     draw.ellipse((cx - hub, cy - hub, cx + hub, cy + hub), fill=0)
 
     score_text = str(round(score))
-    score_font = font(43 * scale, bold=True)
-    draw.text(
-        (cx - _text_width(draw, score_text, score_font) / 2, cy + 7 * scale),
-        score_text,
-        font=score_font,
-        fill=0,
-    )
+    score_font = font(42 * scale, bold=True)
+    draw.text((cx - _text_width(draw, score_text, score_font) / 2, 141 * scale), score_text, font=score_font, fill=0)
     phase = _phase(round(score))
-    phase_font = font(15 * scale, bold=True)
-    draw.text(
-        (cx - _text_width(draw, phase, phase_font) / 2, cy + 46 * scale),
-        phase,
-        font=phase_font,
-        fill=0,
-    )
+    phase_font = font(14 * scale, bold=True)
+    draw.text((cx - _text_width(draw, phase, phase_font) / 2, 185 * scale), phase, font=phase_font, fill=0)
 
-    # Four compact labels keep the quadrant semantics explicit without
-    # reintroducing the removed indicator grid.
-    legend_font = font(9 * scale, bold=True)
-    for label, x in zip(("深熊", "累积", "均衡", "过热"), (65, 145, 225, 305)):
-        draw.text(
-            (x * scale - _text_width(draw, label, legend_font) / 2, 215 * scale),
-            label,
-            font=legend_font,
-            fill=0,
-        )
-
-    # Only the two requested readouts remain below the pendulum.
-    card_gap = 10 * scale
-    card_y = 230 * scale
-    card_height = 55 * scale
-    card_width = (width - 2 * margin - card_gap) // 2
-    _draw_readout(
-        draw,
-        margin,
-        card_y,
-        card_width,
-        card_height,
-        "比特币价格",
-        f"${int(live['price']):,}",
-        scale,
-        paper,
-    )
+    # The only two readouts: large, borderless, and separated by whitespace.
+    draw.line((margin, 220 * scale, width - margin, 220 * scale), fill=0, width=2 * scale)
+    label_font = font(10 * scale, bold=True)
+    value_font = font(24 * scale, bold=True)
+    draw.text((margin, 231 * scale), "BTC", font=label_font, fill=0)
+    draw.text((margin, 246 * scale), f"${int(live['price']):,}", font=value_font, fill=0)
+    right_x = 215 * scale
+    draw.text((right_x, 231 * scale), "AHR999", font=label_font, fill=0)
     ahr = live.get("ahr999")
     ahr_text = "--" if ahr is None else f"{float(ahr):.2f}"
-    _draw_readout(
-        draw,
-        margin + card_width + card_gap,
-        card_y,
-        card_width,
-        card_height,
-        "AHR999 定投指数",
-        ahr_text,
-        scale,
-        paper,
-    )
+    draw.text((right_x, 246 * scale), ahr_text, font=value_font, fill=0)
     return image
 
 
@@ -196,15 +135,12 @@ def render(
         raise ValueError(f"NOTE4 frame must be {W_DEFAULT}x{H_DEFAULT}, got {width}x{height}")
     print("[note4-eink] fetching live price and AHR999...")
     live = fetch_live()
-    hi = build_frame(width * SCALE_DEFAULT, height * SCALE_DEFAULT, live, scale=SCALE_DEFAULT)
-    # BOX averages the supersampled edge once; LANCZOS ringing is exactly the
-    # kind of isolated pixel cloud that the NOTE4 turns into visible dots.
-    img = hi.resize((width, height), Image.Resampling.BOX)
-    # Two levels are intentional. Save PNG mode ``1`` rather than an 8-bit
-    # grayscale PNG so the cloud has no gray samples left to dither.
+    frame = build_frame(width, height, live, scale=SCALE_DEFAULT)
+    # The frame is already native 1-bit. Keep this conversion explicit as a
+    # guard if a future drawing primitive returns another PIL mode.
     if levels != 2:
         raise ValueError("NOTE4 output must use exactly 2 levels (black/white)")
-    gray = ImageOps.grayscale(img).point(lambda value: 0 if value < 128 else 255, mode="L").convert("1")
+    gray = frame.convert("1")
     out_path = Path(out).expanduser()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     gray.save(out_path, format="PNG", optimize=True)

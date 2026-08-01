@@ -84,7 +84,7 @@ class AgentHudTests(unittest.TestCase):
             "fng": 25,
         }
         frame = build_frame(1200, 900, live, scale=3)
-        self.assertEqual(frame.mode, "L")
+        self.assertEqual(frame.mode, "1")
         self.assertEqual(frame.getbbox(), (0, 0, 1200, 900))
 
     def test_page_one_upload_is_true_one_bit_png(self) -> None:
