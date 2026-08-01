@@ -59,14 +59,20 @@ def _draw_readout(
         (x, y, x + w, y + h),
         radius=8 * scale,
         fill=fill,
-        outline=112,
+        outline=132,
         width=max(1, scale),
     )
-    label_font = font(13 * scale, bold=True)
-    value_font = font(47 * scale, bold=True)
-    draw.text((x + 14 * scale, y + 13 * scale), label, font=label_font, fill=38)
+    # A small anchor adds craft without introducing a third datum.
+    draw.rounded_rectangle(
+        (x + 14 * scale, y + 16 * scale, x + 22 * scale, y + 24 * scale),
+        radius=2 * scale,
+        fill=38,
+    )
+    label_font = font(14 * scale, bold=True)
+    value_font = font(50 * scale, bold=True)
+    draw.text((x + 29 * scale, y + 10 * scale), label, font=label_font, fill=38)
     draw.text(
-        (x + w - 15 * scale - _text_width(draw, value, value_font), y + 18 * scale),
+        (x + w - 26 * scale - _text_width(draw, value, value_font), y + 14 * scale),
         value,
         font=value_font,
         fill=8,
@@ -113,7 +119,7 @@ def build_frame(width: int, height: int, live: dict, scale: int = SCALE_DEFAULT)
         "AHR999 定投指数",
         ahr_text,
         scale,
-        224,
+        232,
     )
     return image
 
