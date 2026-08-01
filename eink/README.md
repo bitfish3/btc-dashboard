@@ -55,3 +55,37 @@ Shortcut 要能 `Get Contents of URL` 拉到图，所以 PNG 需公网可达。�
 
 ## 定时刷新（可选 launchd）
 `render_potato.py` 无副作用、幂等，适合挂 launchd 每小时/每晨刷新一张，配合 [2] 自动发布。plist 模板见 `com.potato.eink.plist.sample`(待建)。
+
+## ZECTRIX NOTE4（400×300 黑白屏）
+
+NOTE4 不是土豆片：它是 400×300 的黑白 E-ink，图片通过极趣云 Open API 推送，设备在下一次同步时抓取。专用管线已经放在本目录：
+
+```text
+render_note4.py  →  400×300 1-bit PNG  →  push_note4.py  →  ZECTRIX page 1
+      (实时链上值)                         (X-API-Key)       (设备同步后显示)
+```
+
+### 凭证与首次验证
+
+1. 在 `https://cloud.zectrix.com` 的“开放 API”创建 API Key；API Key 只放 Avibe Vault，名称固定为 `ZECTRIX_API_KEY`，不要写进脚本、plist 或仓库。
+2. 从设备列表取得 NOTE4 的 `deviceId`（MAC 地址）。可放在启动项的 `ZECTRIX_DEVICE_ID` 环境变量中；它不是密钥，但不要把它硬编码进公开仓库。
+3. 先只渲染检查版式：
+
+   ```bash
+   python3 eink/push_note4.py --dry-run --out /tmp/fuckbtc-note4.png
+   ```
+
+4. 有凭证后做一次真实推送（Vault 只向子进程注入密钥）：
+
+   ```bash
+   vibe vault run --env ZECTRIX_API_KEY -- \
+     python3 eink/push_note4.py --device-id "$ZECTRIX_DEVICE_ID"
+   ```
+
+   推送成功后，设备需等同步周期到达，或按语音/确认键触发同步；测试时可暂时把同步周期调成 1 分钟，确认后恢复到 60 分钟以上以保续航。
+
+### 周期调度
+
+`com.fuckbtc.note4.plist.sample` 是每日 08:00 的 LaunchAgent 模板，默认只更新 page 1，避免为了 BTC 价格变化让墨水屏高频唤醒。拿到 API Key 和 `deviceId` 后再复制为 `~/Library/LaunchAgents/com.fuckbtc.note4.plist` 并加载；不要直接加载仍含 `REPLACE_WITH_NOTE4_DEVICE_ID` 的样例。
+
+本管线只负责渲染与推送，不修改现有 `fuckbtc` 网页、VWAP 任务或其他 LaunchAgent。
