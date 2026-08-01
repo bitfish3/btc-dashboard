@@ -13,11 +13,16 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-from render_note4 import render
+from render_agent_hud import render as render_agent_hud
+from render_note4 import render as render_cycle
 
 
 API_BASE = "https://cloud.zectrix.com/open/v1"
 DEFAULT_PAGE_ID = "1"
+DEFAULT_OUTPUTS = {
+    "1": "note4_cycle.png",
+    "2": "note4_agent_hud.png",
+}
 
 
 def _request_json(method: str, url: str, api_key: str, body: bytes | None = None) -> dict:
@@ -97,24 +102,36 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--device-id", default=os.environ.get("ZECTRIX_DEVICE_ID"), help="NOTE4 MAC/deviceId")
     parser.add_argument("--page-id", default=DEFAULT_PAGE_ID)
-    parser.add_argument("--out", default=str(Path(__file__).with_name("note4_cycle.png")))
+    parser.add_argument("--out", help="rendered PNG path (defaults by page: page 1/page 2)")
     parser.add_argument("--dry-run", action="store_true", help="render only; do not call ZECTRIX")
     args = parser.parse_args()
 
-    price, ahr999 = render(args.out)
+    page_id = str(args.page_id)
+    if page_id not in DEFAULT_OUTPUTS:
+        raise SystemExit(f"当前只实现 page 1/2，收到 page={page_id}")
+    output = Path(args.out) if args.out else Path(__file__).with_name(DEFAULT_OUTPUTS[page_id])
+    if page_id == "1":
+        price, ahr999 = render_cycle(output)
+        summary = f"price=${price:,.0f} ahr999={ahr999}"
+    else:
+        hud = render_agent_hud(output)
+        summary = " / ".join(
+            f"{key}={value.get('model') or '—'} tokens={value.get('total_tokens') or value.get('last_total_tokens') or '—'}"
+            for key, value in hud.items()
+        )
     if args.dry_run:
-        print(f"[note4-eink] dry-run complete: price=${price:,.0f} ahr999={ahr999}")
+        print(f"[note4-eink] dry-run page={page_id} complete: {summary}")
         return
 
     api_key = os.environ.get("ZECTRIX_API_KEY", "").strip()
     if not api_key:
         raise SystemExit("缺少 ZECTRIX_API_KEY；请通过 Avibe Vault 注入，不要写入脚本或 plist")
     device_id = resolve_device_id(api_key, args.device_id)
-    payload = push_image(api_key, device_id, Path(args.out), args.page_id)
+    payload = push_image(api_key, device_id, output, page_id)
     data = payload.get("data") or {}
     print(
         f"[note4-eink] pushed page={data.get('pageId', args.page_id)} "
-        f"pages={data.get('pushedPages', '?')} price=${price:,.0f} ahr999={ahr999}"
+        f"pages={data.get('pushedPages', '?')} {summary}"
     )
 
 

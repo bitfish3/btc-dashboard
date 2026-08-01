@@ -89,3 +89,40 @@ render_note4.py  →  400×300 黑白 PNG  →  push_note4.py  →  ZECTRIX page
 `com.fuckbtc.note4.plist.sample` 是每日 08:00 的 LaunchAgent 模板，默认只更新 page 1，避免为了 BTC 价格变化让墨水屏高频唤醒。拿到 API Key 和 `deviceId` 后再复制为 `~/Library/LaunchAgents/com.fuckbtc.note4.plist` 并加载；不要直接加载仍含 `REPLACE_WITH_NOTE4_DEVICE_ID` 的样例。
 
 本管线只负责渲染与推送，不修改现有 `fuckbtc` 网页、VWAP 任务或其他 LaunchAgent。
+
+## page 2：Codex / Claude Code Agent HUD
+
+NOTE4 的第二页现在是独立的 Agent HUD，不会覆盖 page 1 的 BTC + AHR999：
+
+```text
+Codex rollout JSONL ─┐
+                     ├→ render_agent_hud.py → 400×300 黑白 PNG → page 2
+Claude statusLine ──┘
+```
+
+页面只出四类信息：模型、Token、Context、额度/重置时间。它不会把 prompt、工具参数、项目路径或凭证写进图片。Codex 目前原生提供周额度和 token；Claude Code 通过本机 `settings.json` 的 status-line adapter 写入 `~/.cache/fuckbtc/claude-usage.json`，下一次 Claude Code 刷新后即可显示原生 context/5h/7d 额度。数据暂缺时显示 `—`，不做伪估算。
+
+只渲染不推送：
+
+```bash
+python3 eink/push_note4.py --page-id 2 --dry-run --out /tmp/fuckbtc-note4-agent-hud.png
+```
+
+page 2 真实推送（Vault 注入 key，不把 key 放入命令历史）：
+
+```bash
+vibe vault run --env ZECTRIX_API_KEY -- \
+  python3 eink/push_agent_hud.py
+```
+
+`push_agent_hud.py` 按内容签名去重；数字没变就不重复刷新墨水屏。需要持续轮询时，用 Harness 的 `vibe watch` re-arm 一个 60 秒 cycle，不要安装上游 `install.sh`：上游桥接器是 Claude-only、默认 `dither=true`，会把 NOTE4 又变回点阵。
+
+本机已启用的 watcher 等价于：
+
+```bash
+vibe watch add --name 'fuckbtc-note4-agent-hud' --forever \
+  --timeout 120 --lifetime-timeout 0 --retry-exit-code 75 --retry-delay 60 \
+  --cwd /Users/mac26ai/Workspace/10_Code/P/btc-dashboard \
+  -- /Users/mac26ai/.local/bin/vibe vault run --env ZECTRIX_API_KEY -- \
+  /opt/homebrew/bin/python3 /Users/mac26ai/Workspace/10_Code/P/btc-dashboard/eink/push_agent_hud.py --watch-cycle
+```
