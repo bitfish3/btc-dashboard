@@ -101,9 +101,9 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true", help="render only; do not call ZECTRIX")
     args = parser.parse_args()
 
-    score, zone = render(args.out)
+    price, ahr999 = render(args.out)
     if args.dry_run:
-        print(f"[note4-eink] dry-run complete: score={score:.1f} zone={zone}")
+        print(f"[note4-eink] dry-run complete: price=${price:,.0f} ahr999={ahr999}")
         return
 
     api_key = os.environ.get("ZECTRIX_API_KEY", "").strip()
@@ -114,7 +114,7 @@ def main() -> None:
     data = payload.get("data") or {}
     print(
         f"[note4-eink] pushed page={data.get('pageId', args.page_id)} "
-        f"pages={data.get('pushedPages', '?')} score={score:.1f} zone={zone}"
+        f"pages={data.get('pushedPages', '?')} price=${price:,.0f} ahr999={ahr999}"
     )
 
 
