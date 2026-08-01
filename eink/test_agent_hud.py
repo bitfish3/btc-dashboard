@@ -14,6 +14,7 @@ from PIL import Image
 from claude_hud_statusline import build_snapshot, write_snapshot
 from read_agent_usage import load_claude_usage, load_codex_usage
 from render_agent_hud import render
+from render_note4 import build_frame
 
 
 class AgentHudTests(unittest.TestCase):
@@ -67,6 +68,22 @@ class AgentHudTests(unittest.TestCase):
             image = Image.open(output).convert("L")
             self.assertEqual(image.size, (400, 300))
             self.assertEqual(set(image.getdata()), {0, 255})
+
+    def test_page_one_keeps_pendulum_and_two_readouts(self) -> None:
+        live = {
+            "price": 63000,
+            "ahr999": 0.33,
+            "mvrv": 1.2,
+            "z": 0.4,
+            "bp": 39000,
+            "puell": 0.8,
+            "sopr": 1.0,
+            "psip": 46,
+            "fng": 25,
+        }
+        frame = build_frame(1200, 900, live, scale=3)
+        self.assertEqual(frame.mode, "L")
+        self.assertEqual(frame.getbbox(), (0, 0, 1200, 900))
 
 
 if __name__ == "__main__":

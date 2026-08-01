@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Render the two-number fuckbtc card for the ZECTRIX NOTE4.
+"""Render the pendulum-first fuckbtc card for the ZECTRIX NOTE4.
 
 The panel is physically 1-bit. This renderer therefore emits an exact
 400x300 black/white PNG and leaves dithering disabled at the cloud API. The
-canvas intentionally contains only two readouts: BTC price and AHR999.
+canvas intentionally contains the pendulum plus two readouts: BTC price and
+AHR999. Four sectors use solid stroke-width steps; cloud dithering is avoided.
 """
 
 from __future__ import annotations
 
 import argparse
+import math
+from datetime import datetime
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
-from render_potato import fetch_live
+from render_potato import compute, fetch_live
 
 
 W_DEFAULT, H_DEFAULT = 400, 300
@@ -54,25 +57,14 @@ def _draw_readout(
     scale: int,
     fill: int,
 ) -> None:
-    draw.rounded_rectangle(
-        (x, y, x + w, y + h),
-        radius=10 * scale,
-        fill=fill,
-        outline=32,
-        width=2 * scale,
-    )
-    # A solid accent bar survives binary conversion and gives the cards a
-    # deliberate visual anchor without adding another piece of data.
-    draw.rounded_rectangle(
-        (x + 14 * scale, y + 15 * scale, x + 20 * scale, y + h - 15 * scale),
-        radius=3 * scale,
-        fill=24,
-    )
-    label_font = font(14 * scale, bold=True)
-    value_font = font(56 * scale, bold=True)
-    draw.text((x + 30 * scale, y + 12 * scale), label, font=label_font, fill=24)
+    draw.rounded_rectangle((x, y, x + w, y + h), radius=8 * scale, fill=fill, outline=0, width=2 * scale)
+    # Solid geometry survives NOTE4's 1-bit panel; no gray/dither field.
+    draw.rectangle((x + 10 * scale, y + 10 * scale, x + 16 * scale, y + h - 10 * scale), fill=0)
+    label_font = font(10 * scale, bold=True)
+    value_font = font(26 * scale, bold=True)
+    draw.text((x + 26 * scale, y + 8 * scale), label, font=label_font, fill=0)
     draw.text(
-        (x + w - 24 * scale - _text_width(draw, value, value_font), y + 28 * scale),
+        (x + w - 14 * scale - _text_width(draw, value, value_font), y + 15 * scale),
         value,
         font=value_font,
         fill=0,
@@ -86,40 +78,110 @@ def _quantize_gray(image: Image.Image, levels: int) -> Image.Image:
     return image.point(lambda value: int(round(value / step) * step))
 
 
+def _phase(score: float) -> str:
+    if score < 25:
+        return "深熊"
+    if score < 50:
+        return "累积"
+    if score < 75:
+        return "均衡"
+    return "过热"
+
+
 def build_frame(width: int, height: int, live: dict, scale: int = SCALE_DEFAULT) -> Image.Image:
-    """Build a large, quiet two-readout frame for a 1-bit panel."""
+    """Build a pendulum-first frame for a 1-bit panel."""
     paper = 255
     image = Image.new("L", (width, height), paper)
     draw = ImageDraw.Draw(image)
-    margin = 18 * scale
-    card_width = width - 2 * margin
-    card_height = 104 * scale
+    margin = 14 * scale
+    score, _, _, _, _ = compute(live)
 
-    # No title, timestamp, gauge, legend, source, or secondary indicators:
-    # the two cards are the complete information surface.
+    # Header: the pendulum is the primary object on page 1.
+    header_font = font(19 * scale, bold=True)
+    draw.text((margin, 5 * scale), "BTC 周期钟摆", font=header_font, fill=0)
+    stamp = datetime.now().strftime("%m-%d %H:%M")
+    stamp_font = font(10 * scale, bold=True)
+    draw.text(
+        (width - margin - _text_width(draw, stamp, stamp_font), 11 * scale),
+        stamp,
+        font=stamp_font,
+        fill=0,
+    )
+    draw.line((margin, 34 * scale, width - margin, 34 * scale), fill=0, width=scale)
+
+    # Four solid stroke-width steps are the grayscale substitute that survives
+    # a physically 1-bit panel: light -> heavy, without a dotted dither field.
+    cx, cy = width // 2, 145 * scale
+    radius = 98 * scale
+    bbox = (cx - radius, cy - radius, cx + radius, cy + radius)
+    widths = (4 * scale, 8 * scale, 12 * scale, 16 * scale)
+    for index, stroke in enumerate(widths):
+        draw.arc(bbox, 180 + index * 45, 180 + (index + 1) * 45, fill=0, width=stroke)
+
+    # Needle: score 0 = far left, 100 = far right.
+    angle = math.radians(180 + max(0.0, min(100.0, score)) / 100.0 * 180)
+    tip_radius = radius - 8 * scale
+    tip = (cx + tip_radius * math.cos(angle), cy + tip_radius * math.sin(angle))
+    draw.line((cx, cy, tip[0], tip[1]), fill=0, width=5 * scale)
+    hub = 6 * scale
+    draw.ellipse((cx - hub, cy - hub, cx + hub, cy + hub), fill=0)
+
+    score_text = str(round(score))
+    score_font = font(43 * scale, bold=True)
+    draw.text(
+        (cx - _text_width(draw, score_text, score_font) / 2, cy + 7 * scale),
+        score_text,
+        font=score_font,
+        fill=0,
+    )
+    phase = _phase(round(score))
+    phase_font = font(15 * scale, bold=True)
+    draw.text(
+        (cx - _text_width(draw, phase, phase_font) / 2, cy + 46 * scale),
+        phase,
+        font=phase_font,
+        fill=0,
+    )
+
+    # Four compact labels keep the quadrant semantics explicit without
+    # reintroducing the removed indicator grid.
+    legend_font = font(9 * scale, bold=True)
+    for label, x in zip(("深熊", "累积", "均衡", "过热"), (65, 145, 225, 305)):
+        draw.text(
+            (x * scale - _text_width(draw, label, legend_font) / 2, 215 * scale),
+            label,
+            font=legend_font,
+            fill=0,
+        )
+
+    # Only the two requested readouts remain below the pendulum.
+    card_gap = 10 * scale
+    card_y = 230 * scale
+    card_height = 55 * scale
+    card_width = (width - 2 * margin - card_gap) // 2
     _draw_readout(
         draw,
         margin,
-        18 * scale,
+        card_y,
         card_width,
         card_height,
         "比特币价格",
         f"${int(live['price']):,}",
         scale,
-        255,
+        paper,
     )
     ahr = live.get("ahr999")
     ahr_text = "--" if ahr is None else f"{float(ahr):.2f}"
     _draw_readout(
         draw,
-        margin,
-        150 * scale,
+        margin + card_width + card_gap,
+        card_y,
         card_width,
         card_height,
         "AHR999 定投指数",
         ahr_text,
         scale,
-        255,
+        paper,
     )
     return image
 
