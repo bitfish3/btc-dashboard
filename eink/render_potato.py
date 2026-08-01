@@ -14,6 +14,7 @@
 退出码 0 = 成功; 打印合成读数。
 """
 import sys, math, json, argparse, urllib.request
+from datetime import datetime, timezone
 from PIL import Image, ImageDraw, ImageFont
 
 # ---- CONFIG: 设备真实分辨率待发货坐实, 先用竖版占位 ----
@@ -43,11 +44,33 @@ def _get(url, timeout=10):
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return json.loads(r.read().decode())
 
+
+def fetch_ahr999(price):
+    """Calculate the AHR999 index using the same formula as fuckbtc.com."""
+    closes = []
+    last_ts = None
+    try:
+        klines = _get("https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=200")
+        closes = [float(k[4]) for k in klines]
+        last_ts = int(klines[-1][0])
+    except Exception:
+        data = _get("https://www.okx.com/api/v5/market/candles?instId=BTC-USDT&bar=1D&limit=200")
+        rows = data["data"]
+        closes = [float(row[4]) for row in reversed(rows)]
+        last_ts = int(rows[0][0])
+    if not closes or last_ts is None:
+        raise ValueError("AHR999 price history is empty")
+    dma200 = sum(closes) / len(closes)
+    genesis_ms = int(datetime(2009, 1, 3, tzinfo=timezone.utc).timestamp() * 1000)
+    coin_days = max(1, (last_ts - genesis_ms) // 86_400_000)
+    exp_price = 10 ** (5.84 * math.log10(coin_days) - 17.01)
+    return round((price / dma200) * (price / exp_price), 2)
+
 def fetch_live():
     """拉实时链上值; 任一失败回退到最近已知值, 保证永远能出图。"""
     P = "https://looknode-proxy.corms-cushier-0l.workers.dev"
     fb = dict(mvrv=1.22, z=0.38, sopr=1.004, puell=0.80, bp=38873.0,
-              price=63750.0, fng=25, psip=46)  # 回退基线(2026-07-31)
+              price=63750.0, fng=25, psip=46, ahr999=None)  # 回退基线(2026-07-31)
     v = dict(fb)
     def last(url, key):
         try:
@@ -62,6 +85,8 @@ def fetch_live():
     except Exception as e: print(f"  [warn] z fallback: {e}", file=sys.stderr)
     try: v["price"] = round(float(_get("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT")["price"]), 0)
     except Exception as e: print(f"  [warn] price fallback: {e}", file=sys.stderr)
+    try: v["ahr999"] = fetch_ahr999(v["price"])
+    except Exception as e: print(f"  [warn] ahr999 fallback: {e}", file=sys.stderr)
     try:
         d = _get("https://api.alternative.me/fng/?limit=1")["data"][0]; v["fng"] = int(d["value"])
     except Exception as e: print(f"  [warn] fng fallback: {e}", file=sys.stderr)

@@ -58,7 +58,7 @@ Shortcut 要能 `Get Contents of URL` 拉到图，所以 PNG 需公网可达。�
 
 ## ZECTRIX NOTE4（400×300 黑白屏）
 
-NOTE4 不是土豆片：它是 400×300 的黑白 E-ink，图片通过极趣云 Open API 推送，设备在下一次同步时抓取。专用管线已经放在本目录：
+NOTE4 不是土豆片：它是 400×300 的黑白 E-ink，图片通过极趣云 Open API 推送，设备在下一次同步时抓取。专用管线只展示周期钟摆、BTC 价格和 AHR999 定投指数：
 
 ```text
 render_note4.py  →  400×300 灰阶 PNG  →  push_note4.py  →  ZECTRIX page 1
