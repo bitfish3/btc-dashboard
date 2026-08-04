@@ -316,6 +316,274 @@
       .cycle-sub { font-size: 11px; }
     }
   </style>
+  <style>
+    :root {
+      --bg: #0B0E11;
+      --card: #161A1E;
+      --card-raised: #1E2329;
+      --border: #2B3139;
+      --text: #EAECEF;
+      --dim: #848E9C;
+      --gold: #F7931A;
+      --green: #0ECB81;
+      --red: #F6465D;
+      --blue: #3B82F6;
+      --radius: 5px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; background: var(--bg); }
+    body {
+      min-width: 0;
+      overflow-x: hidden;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "IBM Plex Sans", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    a { color: var(--blue); text-underline-offset: 3px; }
+    button, input { font: inherit; }
+    :is(a, input):focus-visible {
+      outline: 2px solid var(--blue);
+      outline-offset: 3px;
+    }
+    .skip-link {
+      position: fixed; top: 8px; left: 8px; z-index: 30;
+      padding: 9px 12px; background: var(--text); color: var(--bg);
+      transform: translateY(-150%); border-radius: var(--radius);
+    }
+    .skip-link:focus { transform: translateY(0); }
+
+    .masthead {
+      position: sticky; top: 0; z-index: 20;
+      border-bottom: 1px solid var(--border);
+      background: rgba(11, 14, 17, .96);
+    }
+    .masthead-inner {
+      width: min(1440px, 100%); min-height: 60px; margin: 0 auto;
+      padding: 0 40px; display: flex; align-items: center; gap: 24px;
+    }
+    .brand-lockup { display: flex; align-items: baseline; gap: 10px; white-space: nowrap; }
+    .brand {
+      color: var(--gold); font-size: 16px; font-weight: 800;
+      letter-spacing: .08em;
+    }
+    .brand-note { color: var(--dim); font-size: 13px; letter-spacing: .08em; }
+    .masthead nav { min-width: 0; flex: 1; }
+    .masthead nav ul { display: flex; align-items: center; gap: 4px; list-style: none; }
+    .masthead nav a {
+      display: inline-flex; align-items: center; min-height: 44px; padding: 0 9px;
+      color: var(--dim); font-size: 13px; font-weight: 600; text-decoration: none;
+    }
+    .masthead nav a:hover { color: var(--text); }
+    .data-cadence {
+      display: flex; align-items: center; gap: 10px; color: var(--dim);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px; white-space: nowrap;
+    }
+    .data-cadence span + span::before { content: "/"; margin-right: 10px; color: var(--border); }
+
+    .container { width: min(1440px, 100%); max-width: none; margin: 0 auto; padding: 0 40px; }
+    .workspace-section { padding: 36px 0 40px; border-top: 1px solid var(--border); scroll-margin-top: 64px; }
+    .workspace-section:first-child { border-top: 0; }
+    .section-heading { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 18px; }
+    .section-heading h2 {
+      font-size: 18px; line-height: 1.2; letter-spacing: -.02em; font-weight: 750;
+    }
+    .section-heading h2::before {
+      content: ""; display: inline-block; width: 4px; height: 18px; margin: 0 9px 0 1px;
+      vertical-align: -2px; background: var(--gold);
+    }
+    .section-heading p { max-width: 560px; color: var(--dim); font-size: 13px; }
+    .section-link { flex: 0 0 auto; font-size: 13px; font-weight: 600; }
+
+    .stats-bar {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0;
+      margin: 0 0 18px; padding: 0; background: var(--card);
+      border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .stat-item { min-width: 0; padding: 14px 17px; border-right: 1px solid var(--border); }
+    .stat-item:last-child { border-right: 0; }
+    .stat-label, .cycle-card-title, .pct-label, .chart-title, .table-title, .fng-title, .elec-label {
+      color: var(--dim); font-size: 13px; font-weight: 600; letter-spacing: .02em;
+    }
+    .stat-value, .cycle-main, .pct-value, .prob-val, .elec-value,
+    .gauge-value, .pend-score, .fng-status, .pend-zone {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-variant-numeric: tabular-nums slashed-zero;
+    }
+    .stat-value { margin-top: 3px; font-size: 22px; line-height: 1.15; font-weight: 750; }
+    .stat-value span, .cycle-main span { font-size: 13px !important; }
+    .stat-value.price { color: var(--gold); }
+    .stat-value.hashrate { color: var(--blue); }
+    .stat-value.range { font-size: 17px; }
+    .stat-value .profit { color: var(--green); }
+
+    .overview-grid { display: grid; grid-template-columns: minmax(0, 8fr) minmax(300px, 4fr); gap: 16px; }
+    .overview-grid > *, .pendulum-section, .fng-section, .pend-info { min-width: 0; }
+    .pendulum-section, .fng-section {
+      margin: 0; border: 1px solid var(--border); border-radius: var(--radius);
+      background: var(--card); box-shadow: none;
+    }
+    .pendulum-section { min-height: 260px; padding: 20px 22px; display: flex; align-items: center; gap: 26px; }
+    .pend-gauge { margin: 0; }
+    .pend-needle, .pend-needle::after { box-shadow: none; }
+    .pend-info { min-width: 220px; }
+    .pend-title { margin-bottom: 6px; color: var(--dim); font-size: 13px; }
+    .pend-zone { margin-bottom: 7px; font-size: 25px; line-height: 1.1; font-weight: 800; }
+    .pend-verdict { margin: 0 0 12px; color: var(--text); font-size: 14px; }
+    .pend-breakdown { gap: 5px; }
+    .pend-chip { padding: 3px 6px; border: 1px solid var(--border); border-radius: 3px; background: transparent; color: var(--dim); font-size: 13px; }
+    .pend-zone-scale, .gauge-labels { font-size: 13px; }
+    .fng-section { padding: 20px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 16px; }
+    .gauge-container { width: 140px; }
+    .gauge-center { background: var(--card); }
+    .gauge-needle, .gauge-needle::after { background: var(--text); box-shadow: none; }
+    .fng-info { width: 100%; }
+    .fng-title { margin-bottom: 5px; }
+    .fng-status { margin: 0 0 5px; font-size: 24px; font-weight: 800; }
+    .fng-desc { color: var(--dim); font-size: 13px; }
+
+    .matrix-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+    .cycle-card {
+      min-width: 0; padding: 14px; background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); box-shadow: none;
+    }
+    .cycle-card-title { margin-bottom: 7px; }
+    .cycle-main { margin-bottom: 6px; font-size: 22px; line-height: 1.1; font-weight: 750; }
+    .cycle-sub { color: var(--dim); font-size: 13px; line-height: 1.55; }
+    .cycle-sub span { font-weight: 500; }
+    .anchor-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .anchor-vwap { grid-column: span 2; }
+    .halving-bar { height: 5px; margin-top: 10px; border-radius: 0; background: var(--border); }
+    .halving-fill { border-radius: 0; background: var(--gold); }
+    .vwap-table { margin: 0; font-size: 13px; }
+    .vwap-table th, .vwap-table td { padding: 7px 6px; border-color: var(--border); }
+    .vwap-table th { font-size: 13px; }
+    .vwap-table td:first-child { font-size: 13px; }
+    .inline-note { margin-top: 9px; color: var(--dim); font-size: 13px; }
+
+    .risk-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(320px, 5fr); gap: 24px; }
+    .risk-panel { min-width: 0; }
+    .panel-label { margin-bottom: 10px; color: var(--dim); font-size: 13px; font-weight: 700; letter-spacing: .04em; }
+    .correlation-table { width: 100%; padding: 4px 0 0; }
+    .prob-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin: 0; }
+    .prob-tile { min-width: 0; padding: 11px 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); }
+    .prob-strike { margin-bottom: 4px; color: var(--dim); font-size: 13px; }
+    .prob-val { font-size: 20px; font-weight: 750; }
+
+    .assumption-strip {
+      display: grid; grid-template-columns: auto minmax(180px, 1fr) auto auto auto;
+      align-items: center; gap: 14px; padding: 13px 16px; margin-bottom: 14px;
+      border: 1px solid var(--border); border-radius: var(--radius); background: var(--card);
+    }
+    .elec-label { color: var(--text); white-space: nowrap; }
+    .elec-slider {
+      width: 100%; max-width: none; height: 4px; margin: 0; border-radius: 0;
+      background: var(--border); accent-color: var(--gold);
+    }
+    .elec-slider::-webkit-slider-thumb { width: 16px; height: 16px; border-radius: 50%; box-shadow: none; background: var(--gold); }
+    .elec-value { min-width: 95px; color: var(--gold); font-size: 15px; font-weight: 750; white-space: nowrap; }
+    .assumption-metric { min-width: 110px; padding-left: 14px; border-left: 1px solid var(--border); }
+    .assumption-metric span { display: block; color: var(--dim); font-size: 13px; }
+    .assumption-metric strong { display: block; margin-top: 1px; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .percentiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0 0 14px; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--card); }
+    .pct-item { min-width: 0; padding: 11px 14px; border-right: 1px solid var(--border); }
+    .pct-item:last-child { border-right: 0; }
+    .pct-item.active { border: 1px solid var(--gold); border-radius: 0; background: rgba(247, 147, 26, .08); }
+    .pct-value { margin-top: 2px; font-size: 19px; font-weight: 750; }
+    .chart-section, .table-section { margin: 0; padding: 15px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); box-shadow: none; }
+    .chart-section { margin-bottom: 14px; }
+    .chart-title { margin-bottom: 12px; }
+    .chart-grid, .x-axis-row { grid-template-columns: 160px minmax(0, 1fr); }
+    .chart-lbl, .x-tick, .vprice-tag { font-size: 13px; }
+    .table-section { padding: 0; }
+    .table-title { padding: 13px 15px; border-bottom: 1px solid var(--border); color: var(--text); }
+    .table-scroll { overflow-x: auto; }
+    .miner-table { min-width: 720px; font-size: 13px; }
+    .miner-table th { padding: 10px 12px; color: var(--dim); font-size: 13px; background: var(--card-raised); }
+    .miner-table td { padding: 10px 12px; border-color: var(--border); }
+    .miner-table th:first-child, .miner-table td:first-child { position: sticky; left: 0; z-index: 1; background: var(--card); }
+    .miner-table th:first-child { z-index: 2; background: var(--card-raised); }
+    .status-badge { padding: 2px 6px; border-radius: 3px; font-size: 13px; }
+    .status-profit { background: rgba(14, 203, 129, .12); color: var(--green); }
+    .status-loss { background: rgba(246, 70, 93, .12); color: var(--red); }
+
+    .strategy-stack { display: grid; gap: 10px; }
+    .strategy-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+    .strategy-grid.mnav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .footer { margin: 0; padding: 22px 0 30px; border-top: 1px solid var(--border); color: var(--dim); font-size: 13px; }
+
+    @media (max-width: 1024px) {
+      .masthead-inner, .container { padding-left: 24px; padding-right: 24px; }
+      .masthead-inner { flex-wrap: wrap; gap: 0 16px; padding-top: 5px; padding-bottom: 5px; }
+      .masthead nav { order: 3; flex-basis: 100%; }
+      .masthead nav ul { overflow-x: auto; scrollbar-width: none; }
+      .data-cadence { margin-left: auto; }
+      .workspace-section { scroll-margin-top: 110px; }
+      .overview-grid, .risk-grid { grid-template-columns: minmax(0, 1fr); }
+      .fng-section { flex-direction: row; align-items: center; }
+      .matrix-grid, .anchor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .anchor-vwap { grid-column: span 2; }
+      .assumption-strip { grid-template-columns: auto minmax(180px, 1fr) auto auto; }
+      .assumption-metric:last-child { grid-column: 2 / -1; padding-left: 0; border-left: 0; }
+    }
+    @media (max-width: 767px) {
+      .masthead-inner, .container { padding-left: 16px; padding-right: 16px; }
+      .masthead-inner { min-height: 0; align-items: center; }
+      .brand-note { display: none; }
+      .data-cadence { gap: 7px; font-size: 13px; }
+      .data-cadence span + span::before { margin-right: 7px; }
+      .masthead nav { margin-left: -7px; margin-right: -7px; }
+      .masthead nav a { min-height: 44px; padding: 0 8px; }
+      .section-link, .inline-note a, .footer a { display: inline-flex; align-items: center; min-height: 44px; }
+      .inline-note a, .footer a { margin: -10px 0; }
+      .workspace-section { padding: 28px 0 32px; scroll-margin-top: 104px; }
+      .section-heading { align-items: start; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 14px; }
+      .section-heading h2 { font-size: 17px; }
+      .section-heading p { flex-basis: 100%; }
+      .stats-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .stat-item:nth-child(2) { border-right: 0; }
+      .stat-item:last-child { grid-column: 1 / -1; border-top: 1px solid var(--border); }
+      .stat-value { font-size: 19px; }
+      .pendulum-section { padding: 16px; gap: 14px; flex-direction: column; align-items: stretch; }
+      .pend-gauge { width: 280px; max-width: 100%; height: 180px; transform: none; margin: 0; }
+      .fng-section { padding: 16px; }
+      .matrix-grid, .anchor-grid, .strategy-grid, .strategy-grid.mnav { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .anchor-vwap { grid-column: 1 / -1; }
+      .cycle-main { font-size: 20px; }
+      .prob-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .assumption-strip { grid-template-columns: 1fr auto; gap: 10px 12px; padding: 13px; }
+      .elec-label { grid-column: 1; }
+      .elec-value { grid-column: 2; grid-row: 1; text-align: right; }
+      .elec-slider { grid-column: 1 / -1; min-height: 44px; }
+      .assumption-metric { padding: 8px 0 0; border-left: 0; border-top: 1px solid var(--border); }
+      .assumption-metric:last-child { grid-column: auto; padding-left: 0; }
+      .percentiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .pct-item:nth-child(2) { border-right: 0; }
+      .pct-item:nth-child(n+3) { border-top: 1px solid var(--border); }
+      .chart-section { padding: 13px; overflow: hidden; }
+      .chart-grid, .x-axis-row { grid-template-columns: 105px minmax(0, 1fr); }
+      .chart-lbl { font-size: 13px; }
+      .table-scroll { -webkit-overflow-scrolling: touch; }
+    }
+    @media (max-width: 359px) {
+      .data-cadence span:nth-child(2) { display: none; }
+      .stats-bar, .matrix-grid, .anchor-grid, .strategy-grid, .strategy-grid.mnav { grid-template-columns: 1fr; }
+      .stat-item, .stat-item:nth-child(2) { border-right: 0; border-bottom: 1px solid var(--border); }
+      .stat-item:last-child { grid-column: auto; border-bottom: 0; }
+      .anchor-vwap { grid-column: auto; }
+      .pend-gauge { width: 254px; max-width: 100%; height: 176px; transform: scale(.9); transform-origin: left top; margin: 0; }
+      .pend-gauge svg { width: 100%; height: auto; }
+      .fng-section { flex-direction: column; align-items: flex-start; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+    }
+  </style>
 
 <!-- og:meta injected by xfish_og_inject -->
 <meta property="og:type" content="article">
@@ -335,294 +603,123 @@
 <meta name="twitter:image" content="https://x.fish/og-image.png">
 </head>
 <body>
-  <div class="container">
-    <div class="stats-bar">
-      <div class="stat-item">
-        <div class="stat-label">BTC 价格</div>
-        <div class="stat-value price" id="btc-price">$--,---</div>
+  <a class="skip-link" href="#main-content">跳至主内容</a>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <div class="brand-lockup" aria-label="FUCKBTC BTC OPERATING DESK">
+        <span class="brand">FUCKBTC</span><span class="brand-note">BTC OPERATING DESK</span>
       </div>
-      <div class="stat-item">
-        <div class="stat-label">电费</div>
-        <div class="stat-value" id="elec-display" style="color:var(--gold)">$0.060</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-label">全网算力</div>
-        <div class="stat-value hashrate" id="hashrate">--- EH/s</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-label">关机价范围</div>
-        <div class="stat-value range" id="range">--- ~ ---</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-label">盈利矿机</div>
-        <div class="stat-value" id="profit-count"><span class="profit">--</span>/--</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-label">ahr999 定投指数</div>
-        <div class="stat-value" id="ahr999" style="color:var(--green)">--</div>
+      <nav aria-label="主导航">
+        <ul>
+          <li><a href="#overview">概览</a></li>
+          <li><a href="#cycle">周期</a></li>
+          <li><a href="#risk">风险</a></li>
+          <li><a href="#mining">矿机</a></li>
+          <li><a href="#strategy">Strategy</a></li>
+        </ul>
+      </nav>
+      <div class="data-cadence" aria-label="数据刷新节奏">
+        <span>PRICE 15S</span><span>ON-CHAIN CACHED</span><span>ANCHORS WEEKLY</span>
       </div>
     </div>
+  </header>
 
-    <div class="fng-section">
-      <div class="gauge-container">
-        <div class="gauge-bg">
-          <svg width="140" height="70" viewBox="0 0 140 70">
-            <path d="M10,70 A60,60 0 0,1 38,18" fill="none" stroke="#e74c5f" stroke-width="12" stroke-linecap="round"/>
-            <path d="M38,18 A60,60 0 0,1 70,10" fill="none" stroke="#f7931a" stroke-width="12" stroke-linecap="round"/>
-            <path d="M70,10 A60,60 0 0,1 102,18" fill="none" stroke="#f0d000" stroke-width="12" stroke-linecap="round"/>
-            <path d="M102,18 A60,60 0 0,1 130,70" fill="none" stroke="#4cd964" stroke-width="12" stroke-linecap="round"/>
-          </svg>
+  <main class="container" id="main-content">
+    <section class="workspace-section" id="overview" aria-labelledby="overview-title">
+      <div class="section-heading">
+        <div><h2 id="overview-title">概览</h2></div>
+        <p>市场事实与多指标周期判断。价格高频刷新，链上指标通过缓存层提供。</p>
+      </div>
+      <div class="stats-bar" aria-label="市场事实">
+        <div class="stat-item"><div class="stat-label">BTC / USD</div><div class="stat-value price" id="btc-price">$--,---</div></div>
+        <div class="stat-item"><div class="stat-label">全网算力</div><div class="stat-value hashrate" id="hashrate">--- EH/s</div></div>
+        <div class="stat-item"><div class="stat-label">ahr999 定投指数</div><div class="stat-value" id="ahr999" style="color:var(--green)">--</div></div>
+      </div>
+      <div class="overview-grid">
+        <div class="pendulum-section" aria-label="周期钟摆综合判断">
+          <div class="pend-gauge" aria-hidden="true">
+            <svg width="280" height="150" viewBox="0 0 280 150">
+              <path d="M20,138 A120,120 0 0,1 42.9,67.5" fill="none" stroke="#0ECB81" stroke-width="13" stroke-linecap="round"/>
+              <path d="M42.9,67.5 A120,120 0 0,1 102.9,23.9" fill="none" stroke="#0ECB81" stroke-width="13"/>
+              <path d="M102.9,23.9 A120,120 0 0,1 177.1,23.9" fill="none" stroke="#EAECEF" stroke-width="13"/>
+              <path d="M177.1,23.9 A120,120 0 0,1 237.1,67.5" fill="none" stroke="#F7931A" stroke-width="13"/>
+              <path d="M237.1,67.5 A120,120 0 0,1 260,138" fill="none" stroke="#F6465D" stroke-width="13" stroke-linecap="round"/>
+            </svg>
+            <div class="pend-needle" id="pend-needle" style="transform:rotate(-90deg)"></div>
+            <div class="pend-score" id="pend-score">--</div>
+            <div class="pend-zone-scale"><span>投降</span><span>累积</span><span>中性</span><span>过热</span><span>狂热</span></div>
+          </div>
+          <div class="pend-info">
+            <div class="pend-title">周期钟摆 · 链上综合判断（0 深熊投降 → 100 泡沫狂热）</div>
+            <div class="pend-zone" id="pend-zone">计算中…</div>
+            <div class="pend-verdict" id="pend-verdict">7 项链上指标加权合成，规避单指标噪声</div>
+            <div class="pend-breakdown" id="pend-breakdown"></div>
+          </div>
         </div>
-        <div class="gauge-needle" id="fng-needle" style="transform:rotate(-90deg)"></div>
-        <div class="gauge-value" id="fng-value">--</div>
-        <div class="gauge-labels"><span>0</span><span>50</span><span>100</span></div>
+        <aside class="fng-section" aria-label="恐惧与贪婪指数">
+          <div class="gauge-container" aria-hidden="true">
+            <div class="gauge-bg"><svg width="140" height="70" viewBox="0 0 140 70"><path d="M10,70 A60,60 0 0,1 38,18" fill="none" stroke="#F6465D" stroke-width="12" stroke-linecap="round"/><path d="M38,18 A60,60 0 0,1 70,10" fill="none" stroke="#F7931A" stroke-width="12" stroke-linecap="round"/><path d="M70,10 A60,60 0 0,1 102,18" fill="none" stroke="#EAECEF" stroke-width="12" stroke-linecap="round"/><path d="M102,18 A60,60 0 0,1 130,70" fill="none" stroke="#0ECB81" stroke-width="12" stroke-linecap="round"/></svg></div>
+            <div class="gauge-needle" id="fng-needle" style="transform:rotate(-90deg)"></div>
+            <div class="gauge-value" id="fng-value">--</div>
+            <div class="gauge-labels"><span>0</span><span>50</span><span>100</span></div>
+          </div>
+          <div class="fng-info"><div class="fng-title">恐惧 &amp; 贪婪指数</div><div class="fng-status" id="fng-status">--</div><div class="fng-desc" id="fng-desc">加载中...</div></div>
+        </aside>
       </div>
-      <div class="fng-info">
-        <div class="fng-title">恐惧 & 贪婪指数</div>
-        <div class="fng-status" id="fng-status">--</div>
-        <div class="fng-desc" id="fng-desc">加载中...</div>
-      </div>
-    </div>
+    </section>
 
-    <!-- 周期钟摆 · 链上综合判断 -->
-    <div class="pendulum-section">
-      <div class="pend-gauge">
-        <svg width="280" height="150" viewBox="0 0 280 150">
-          <path d="M20,138 A120,120 0 0,1 42.9,67.5" fill="none" stroke="#2ea043" stroke-width="13" stroke-linecap="round"/>
-          <path d="M42.9,67.5 A120,120 0 0,1 102.9,23.9" fill="none" stroke="#4cd964" stroke-width="13"/>
-          <path d="M102.9,23.9 A120,120 0 0,1 177.1,23.9" fill="none" stroke="#f0d000" stroke-width="13"/>
-          <path d="M177.1,23.9 A120,120 0 0,1 237.1,67.5" fill="none" stroke="#f7931a" stroke-width="13"/>
-          <path d="M237.1,67.5 A120,120 0 0,1 260,138" fill="none" stroke="#e74c5f" stroke-width="13" stroke-linecap="round"/>
-        </svg>
-        <div class="pend-needle" id="pend-needle" style="transform:rotate(-90deg)"></div>
-        <div class="pend-score" id="pend-score">--</div>
-        <div class="pend-zone-scale"><span>投降</span><span>累积</span><span>中性</span><span>过热</span><span>狂热</span></div>
+    <section class="workspace-section" id="cycle" aria-labelledby="cycle-title">
+      <div class="section-heading"><div><h2 id="cycle-title">周期</h2></div><p>链上证据矩阵与估值、成本锚分离：前者判断行为与利润状态，后者给出价格坐标。</p></div>
+      <div class="matrix-grid" aria-label="链上证据矩阵">
+        <article class="cycle-card"><div class="cycle-card-title">MVRV Ratio</div><div class="cycle-main" id="mvrv-value" style="color:var(--green)">--</div><div class="cycle-sub"><span id="mvrv-note" style="color:var(--dim)">&lt;1 低估 · 1~3.5 正常 · &gt;3.5 过热</span></div></article>
+        <article class="cycle-card"><div class="cycle-card-title">MVRV Z-Score</div><div class="cycle-main" id="mvrvz-value" style="color:var(--green)">--</div><div class="cycle-sub"><span id="mvrvz-note" style="color:var(--dim)">&lt;0 极度低估 · 0~5 正常 · &gt;7 顶部泡沫</span></div></article>
+        <article class="cycle-card"><div class="cycle-card-title">SOPR</div><div class="cycle-main" id="sopr-value" style="color:var(--green)">--</div><div class="cycle-sub"><span id="sopr-note" style="color:var(--dim)">&lt;1 亏损投降 · =1 临界 · &gt;1 获利了结</span></div></article>
+        <article class="cycle-card"><div class="cycle-card-title">Puell Multiple</div><div class="cycle-main" id="puell-value" style="color:var(--green)">--</div><div class="cycle-sub"><span id="puell-note" style="color:var(--dim)">&lt;0.5 矿工投降 · 0.5~1 承压 · &gt;4 顶部</span></div></article>
+        <article class="cycle-card"><div class="cycle-card-title">PSIP · 获利筹码占比</div><div class="cycle-main" id="psip-value" style="color:var(--green)">~46%</div><div class="cycle-sub"><span style="color:var(--green)">约 54% 筹码水下</span><br><span style="color:var(--dim)">底部参考：45% / 42% / 39% / 34%</span></div></article>
       </div>
-      <div class="pend-info">
-        <div class="pend-title">🕰️ 周期钟摆 · 链上综合判断（0 深熊投降 → 100 泡沫狂热）</div>
-        <div class="pend-zone" id="pend-zone">计算中…</div>
-        <div class="pend-verdict" id="pend-verdict">7 项链上指标加权合成，规避单指标噪声</div>
-        <div class="pend-breakdown" id="pend-breakdown"></div>
+      <div class="section-heading" style="margin-top:28px"><div><h2>估值与成本锚</h2></div><p>周频锚点用于识别相对位置，不等于交易信号。</p></div>
+      <div class="anchor-grid">
+        <article class="cycle-card"><div class="cycle-card-title">200 周均线 · 200WMA</div><div class="cycle-main" id="wma200-price" style="color:var(--blue)">$--,---</div><div class="cycle-sub">当前价格 / 200WMA = <span id="wma200-ratio">--</span>x<br><span id="wma200-note" style="color:var(--dim)">BTC 历史上从未长期跌破 200WMA</span></div></article>
+        <article class="cycle-card"><div class="cycle-card-title">Balanced Price · 均衡价格</div><div class="cycle-main" id="bp-price" style="color:var(--green)">$--,---</div><div class="cycle-sub">当前价格 / BP = <span id="bp-ratio">--</span>x<br><span id="bp-note" style="color:var(--dim)">已实现价格 − 转移价格</span></div></article>
+        <article class="cycle-card anchor-vwap"><div class="cycle-card-title">全周期 VWAP 成本锚 · 现货 + IBIT 合成成交量加权</div><table class="vwap-table"><thead><tr><th>锚点</th><th>合成 VWAP（现价倍数）</th></tr></thead><tbody><tr><td>2017 全周期</td><td id="vwap-2017">--</td></tr><tr><td>2022/11 FTX 底</td><td id="vwap-2022">--</td></tr><tr><td>2024/04 减半</td><td id="vwap-halv">--</td></tr></tbody></table><div class="inline-note"><span id="vwap-note">每周更新；倍数 &gt;1 获利 / &lt;1 水下。参考 <a href="https://x.com/hazenlee" target="_blank" rel="noopener">@hazenlee</a></span></div></article>
+        <article class="cycle-card"><div class="cycle-card-title">减半倒计时</div><div class="cycle-main" id="halving-days" style="color:var(--gold)">--- 天</div><div class="cycle-sub">当前区块 <span id="halving-block">---</span> / 目标 <span>1,050,000</span><br>奖励 3.125 → <span>1.5625 BTC</span> · 预计 <span id="halving-date">---</span></div><div class="halving-bar"><div class="halving-fill" id="halving-fill" style="width:0%"></div></div></article>
       </div>
-    </div>
+    </section>
 
-    <div class="cycle-row">
-      <div class="cycle-card">
-        <div class="cycle-card-title">200 周均线 (200 WMA)</div>
-        <div class="cycle-main" id="wma200-price" style="color:var(--blue)">$--,---</div>
-        <div class="cycle-sub">
-          当前价格 / 200WMA = <span id="wma200-ratio">--</span>x<br>
-          <span id="wma200-note" style="color:var(--dim)">BTC 历史上从未长期跌破 200WMA</span>
-        </div>
+    <section class="workspace-section" id="risk" aria-labelledby="risk-title">
+      <div class="section-heading"><div><h2 id="risk-title">风险</h2></div><p>把相关性与市场隐含下行分布并置，防止单一价格叙事霸占决策。</p></div>
+      <div class="risk-grid">
+        <article class="risk-panel"><div class="panel-label">BTC 资产相关性 · 日收益滚动</div><table class="vwap-table correlation-table"><thead><tr><th>资产</th><th>30天</th><th>90天</th><th>180天</th><th>1年</th></tr></thead><tbody><tr><td>黄金 (GLD)</td><td id="corr-gold-30">--</td><td id="corr-gold-90">--</td><td id="corr-gold-180">--</td><td id="corr-gold-252">--</td></tr><tr><td>纳指100 (QQQ)</td><td id="corr-qqq-30">--</td><td id="corr-qqq-90">--</td><td id="corr-qqq-180">--</td><td id="corr-qqq-252">--</td></tr></tbody></table><div class="inline-note">Pearson 相关系数（−1~+1）。QQQ 高表示 BTC 更像风险资产；黄金高表示更像储值资产。每周更新。</div></article>
+        <article class="risk-panel"><div class="panel-label">2026 跌破概率 · Polymarket + Kalshi <a class="section-link" href="https://probs.fuckbtc.com/?lang=zh" target="_blank" rel="noopener">完整分布</a></div><div class="prob-row" id="prob-row"><div class="prob-tile" id="prob-55000"><div class="prob-strike">跌破 $55k</div><div class="prob-val">--</div></div><div class="prob-tile" id="prob-50000"><div class="prob-strike">跌破 $50k</div><div class="prob-val">--</div></div><div class="prob-tile" id="prob-45000"><div class="prob-strike">跌破 $45k</div><div class="prob-val">--</div></div><div class="prob-tile" id="prob-40000"><div class="prob-strike">跌破 $40k</div><div class="prob-val">--</div></div><div class="prob-tile" id="prob-35000"><div class="prob-strike">跌破 $35k</div><div class="prob-val">--</div></div><div class="prob-tile" id="prob-30000"><div class="prob-strike">跌破 $30k</div><div class="prob-val">--</div></div></div></article>
       </div>
-      <div class="cycle-card">
-        <div class="cycle-card-title">Balanced Price (均衡价格)</div>
-        <div class="cycle-main" id="bp-price" style="color:var(--green)">$--,---</div>
-        <div class="cycle-sub">
-          当前价格 / BP = <span id="bp-ratio">--</span>x<br>
-          <span id="bp-note" style="color:var(--dim)">已实现价格 − 转移价格，历史周期底部参考</span>
-        </div>
-      </div>
-      <div class="cycle-card">
-        <div class="cycle-card-title">MVRV Ratio (市值/已实现市值)</div>
-        <div class="cycle-main" id="mvrv-value" style="color:var(--green)">--</div>
-        <div class="cycle-sub">
-          <span id="mvrv-note" style="color:var(--dim)">&lt;1 低估 · 1~3.5 正常 · &gt;3.5 过热</span>
-        </div>
-      </div>
-      <div class="cycle-card">
-        <div class="cycle-card-title">MVRV Z-Score</div>
-        <div class="cycle-main" id="mvrvz-value" style="color:var(--green)">--</div>
-        <div class="cycle-sub">
-          <span id="mvrvz-note" style="color:var(--dim)">&lt;0 极度低估 · 0~5 正常 · &gt;7 顶部泡沫</span>
-        </div>
-      </div>
-      <div class="cycle-card">
-        <div class="cycle-card-title">SOPR (卖出盈亏比 · 卖出潮信号)</div>
-        <div class="cycle-main" id="sopr-value" style="color:var(--green)">--</div>
-        <div class="cycle-sub">
-          <span id="sopr-note" style="color:var(--dim)">&lt;1 亏损投降(卖出潮未尽) · =1 临界 · &gt;1 获利了结</span>
-        </div>
-      </div>
-      <div class="cycle-card">
-        <div class="cycle-card-title">Puell Multiple (矿工投降)</div>
-        <div class="cycle-main" id="puell-value" style="color:var(--green)">--</div>
-        <div class="cycle-sub">
-          <span id="puell-note" style="color:var(--dim)">&lt;0.5 矿工深度投降(历史大底) · 0.5~1 承压 · &gt;4 顶部</span>
-        </div>
-      </div>
-      <div class="cycle-card">
-        <div class="cycle-card-title">获利筹码占比 PSIP (Supply in Profit)</div>
-        <div class="cycle-main" id="psip-value" style="color:var(--green)">~46%</div>
-        <div class="cycle-sub">
-          <span style="color:var(--green)">🟢 约 54% 筹码水下 — 承压偏底，但历次大底更低</span><br>
-          <span style="color:var(--dim)">历史底部 · 上周期16k ~45% / 312 ~42% / 2019 ~39% / 2015 ~34%</span>
-        </div>
-      </div>
-      <div class="cycle-card">
-        <div class="cycle-card-title">⏳ 减半倒计时</div>
-        <div class="cycle-main" id="halving-days" style="color:var(--gold)">--- 天</div>
-        <div class="cycle-sub">
-          当前区块 <span id="halving-block">---</span> / 目标 <span>1,050,000</span><br>
-          奖励 3.125 → <span>1.5625 BTC</span> · 预计 <span id="halving-date">---</span>
-        </div>
-        <div class="halving-bar"><div class="halving-fill" id="halving-fill" style="width:0%"></div></div>
-      </div>
-    </div>
+    </section>
 
-    <!-- 全周期 VWAP 成本锚: BTC(币安) vs IBIT(ETF) 3 锚点 (参考 @hazenlee) -->
-    <div class="cycle-card" style="margin-bottom:16px">
-      <div class="cycle-card-title">📐 全周期 VWAP 成本锚 — 币安+Coinbase 现货 + IBIT(ETF) 合成成交量加权</div>
-      <table class="vwap-table">
-        <thead><tr><th>锚点</th><th>合成 VWAP (现价倍数)</th></tr></thead>
-        <tbody>
-          <tr><td>2017 全周期</td><td id="vwap-2017">--</td></tr>
-          <tr><td>2022/11 FTX 底</td><td id="vwap-2022">--</td></tr>
-          <tr><td>2024/04 减半</td><td id="vwap-halv">--</td></tr>
-        </tbody>
-      </table>
-      <div class="cycle-sub" style="margin-top:8px">
-        <span id="vwap-note" style="color:var(--dim)">现货(Binance+Coinbase)+ETF(IBIT)合成的成交量加权成本 · 每周更新 · 倍数 &gt;1 获利 / &lt;1 水下。IBIT 仅 2024 起，锚点越近权重越大。参考 <a href="https://x.com/hazenlee" target="_blank" rel="noopener" style="color:var(--blue)">@hazenlee</a></span>
+    <section class="workspace-section" id="mining" aria-labelledby="mining-title">
+      <div class="section-heading"><div><h2 id="mining-title">矿机</h2></div><p>电力假设驱动全矿机组的关机价格、盈利数量和分位数；这才是操作变量。</p></div>
+      <div class="assumption-strip" aria-label="矿机运行假设">
+        <label class="elec-label" for="electricity">电费假设</label>
+        <input type="range" class="elec-slider" id="electricity" min="0.02" max="0.15" step="0.005" value="0.06">
+        <output class="elec-value" id="elec-value">$0.060/kWh</output>
+        <div class="assumption-metric"><span>当前电费</span><strong id="elec-display" style="color:var(--gold)">$0.060</strong></div>
+        <div class="assumption-metric"><span>关机价范围</span><strong id="range">--- ~ ---</strong></div>
+        <div class="assumption-metric"><span>盈利矿机</span><strong id="profit-count"><span class="profit">--</span>/--</strong></div>
       </div>
-    </div>
+      <div class="percentiles" aria-label="关机价分位数"><div class="pct-item" id="pct-25"><div class="pct-label">P25</div><div class="pct-value" id="p25-val">--</div></div><div class="pct-item active" id="pct-50"><div class="pct-label">P50</div><div class="pct-value" id="p50-val">--</div></div><div class="pct-item" id="pct-75"><div class="pct-label">P75</div><div class="pct-value" id="p75-val">--</div></div><div class="pct-item" id="pct-90"><div class="pct-label">P90</div><div class="pct-value" id="p90-val">--</div></div></div>
+      <div class="chart-section"><div class="chart-title">矿机关机价与 BTC 现价</div><div id="chart-container"></div></div>
+      <div class="table-section"><div class="table-title">矿机明细</div><div class="table-scroll"><table class="miner-table"><thead><tr><th>矿机型号</th><th>算力</th><th>功耗</th><th>功耗比</th><th>关机价</th><th>状态</th></tr></thead><tbody id="miner-tbody"></tbody></table></div></div>
+    </section>
 
-    <!-- BTC 资产相关性 (日收益滚动, 每周脚本写入) -->
-    <div class="cycle-card" style="margin-bottom:16px">
-      <div class="cycle-card-title">🔗 BTC 资产相关性 — 与黄金 / 纳指100 (日收益滚动)</div>
-      <table class="vwap-table">
-        <thead><tr><th>资产</th><th>30天</th><th>90天</th><th>180天</th><th>1年</th></tr></thead>
-        <tbody>
-          <tr><td>黄金 (GLD)</td><td id="corr-gold-30">--</td><td id="corr-gold-90">--</td><td id="corr-gold-180">--</td><td id="corr-gold-252">--</td></tr>
-          <tr><td>纳指100 (QQQ)</td><td id="corr-qqq-30">--</td><td id="corr-qqq-90">--</td><td id="corr-qqq-180">--</td><td id="corr-qqq-252">--</td></tr>
-        </tbody>
-      </table>
-      <div class="cycle-sub" style="margin-top:8px">
-        <span style="color:var(--dim)">Pearson 相关系数 (−1~+1) · &gt;0 同向 / &lt;0 反向。QQQ 高 = BTC 偏风险资产；黄金 高 = 偏避险/储值。每周更新。</span>
+    <section class="workspace-section" id="strategy" aria-labelledby="strategy-title">
+      <div class="section-heading"><div><h2 id="strategy-title">Strategy</h2></div><p>权益代理与融资风险，非 BTC 链上指标。</p><a class="section-link" href="https://mstr.fuckbtc.com/" target="_blank" rel="noopener">监控盘</a></div>
+      <div class="strategy-stack">
+        <div class="strategy-grid mnav"><article class="cycle-card"><div class="cycle-card-title">MSTR mNAV · Strategy</div><div class="cycle-main" id="mstr-mnav">--</div><div class="cycle-sub">Basic: <span id="mstr-basic">--</span> · EV: <span id="mstr-ev">--</span><br><span id="mstr-detail" style="color:var(--dim)">BTC: -- | $--</span></div></article><article class="cycle-card"><div class="cycle-card-title">BMNR mNAV · BitMine</div><div class="cycle-main" id="bmnr-mnav">--</div><div class="cycle-sub"><span id="bmnr-detail" style="color:var(--dim)">ETH: -- | $--</span></div></article></div>
+        <div class="strategy-grid"><article class="cycle-card"><div class="cycle-card-title">STRC 价格 · par $100</div><div class="cycle-main" id="strc-price" style="color:var(--gold)">$--</div><div class="cycle-sub"><span id="strc-price-note" style="color:var(--dim)">$95 观察 · $92 加仓 · $85 激进 · $75 危机</span></div></article><article class="cycle-card"><div class="cycle-card-title">STRC ATM 剩余额度</div><div class="cycle-main" id="strc-atm" style="color:var(--blue)">$--</div><div class="cycle-sub">增发水管余量，越少越依赖二级<br><span style="color:var(--dim)">STRC 发行量 <span id="strc-issued" style="color:var(--text)">$--</span></span></div></article><article class="cycle-card"><div class="cycle-card-title">飞轮健康度</div><div class="cycle-main" id="strc-score" style="color:var(--gold)">--/100</div><div class="cycle-sub"><span id="strc-reasons" style="color:var(--dim)">加载中...</span></div></article></div>
+        <div class="strategy-grid"><article class="cycle-card"><div class="cycle-card-title">STRC 单券 Runway</div><div class="cycle-main" id="strc-runway" style="color:var(--gold)">--月</div><div class="cycle-sub">只看 STRC 股息覆盖<br><span id="strc-runway-note" style="color:var(--dim)">保守口径 --</span></div></article><article class="cycle-card"><div class="cycle-card-title">全局 Runway</div><div class="cycle-main" id="global-runway" style="color:var(--gold)">--月</div><div class="cycle-sub">全 preferred 股息 + 债息<br><span id="global-runway-note" style="color:var(--dim)">9M 降仓 · 6M 失去 income 属性</span></div></article><article class="cycle-card"><div class="cycle-card-title">现金覆盖</div><div class="cycle-main" id="runway-cash" style="color:var(--blue)">$--</div><div class="cycle-sub">年现金需求 <span id="runway-need" style="color:var(--text)">$--</span><br><span id="runway-headroom" style="color:var(--dim)">9M 余量 --</span></div></article></div>
       </div>
-    </div>
+    </section>
 
-    <!-- 跌破概率 (Polymarket + Kalshi 实时) -->
-    <div class="section-head">
-      <span class="sh-title">📉 2026 跌破概率</span>
-      <a href="https://probs.fuckbtc.com/?lang=zh" target="_blank">完整分布 →</a>
-    </div>
-    <div class="prob-row" id="prob-row">
-      <div class="prob-tile" id="prob-55000"><div class="prob-strike">跌破 $55k</div><div class="prob-val">--</div></div>
-      <div class="prob-tile" id="prob-50000"><div class="prob-strike">跌破 $50k</div><div class="prob-val">--</div></div>
-      <div class="prob-tile" id="prob-45000"><div class="prob-strike">跌破 $45k</div><div class="prob-val">--</div></div>
-      <div class="prob-tile" id="prob-40000"><div class="prob-strike">跌破 $40k</div><div class="prob-val">--</div></div>
-      <div class="prob-tile" id="prob-35000"><div class="prob-strike">跌破 $35k</div><div class="prob-val">--</div></div>
-      <div class="prob-tile" id="prob-30000"><div class="prob-strike">跌破 $30k</div><div class="prob-val">--</div></div>
-    </div>
-
-    <!-- mNAV 专区 -->
-    <div class="cycle-row" style="margin-top:12px">
-      <div class="cycle-card">
-        <div class="cycle-card-title">MSTR mNAV (Strategy)</div>
-        <div class="cycle-main" id="mstr-mnav">--</div>
-        <div class="cycle-sub">
-          Basic: <span id="mstr-basic">--</span> · EV: <span id="mstr-ev">--</span><br>
-          <span id="mstr-detail" style="color:var(--dim)">BTC: -- | $--</span>
-        </div>
-      </div>
-      <div class="cycle-card">
-        <div class="cycle-card-title">BMNR mNAV (BitMine)</div>
-        <div class="cycle-main" id="bmnr-mnav">--</div>
-        <div class="cycle-sub">
-          <span id="bmnr-detail" style="color:var(--dim)">ETH: -- | $--</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- MSTR STRC 飞轮 -->
-    <div class="section-head" style="margin-top:4px">
-      <span class="sh-title">🎡 MSTR STRC 飞轮</span>
-      <a href="https://mstr.fuckbtc.com/" target="_blank">监控盘 →</a>
-    </div>
-    <div class="cycle-row">
-      <div class="cycle-card">
-        <div class="cycle-card-title">STRC 价格 (par $100)</div>
-        <div class="cycle-main" id="strc-price" style="color:var(--gold)">$--</div>
-        <div class="cycle-sub">
-          <span id="strc-price-note" style="color:var(--dim)">$95 观察 · $92 加仓 · $85 激进 · $75 危机</span>
-        </div>
-      </div>
-      <div class="cycle-card">
-        <div class="cycle-card-title">STRC ATM 剩余额度</div>
-        <div class="cycle-main" id="strc-atm" style="color:var(--blue)">$--</div>
-        <div class="cycle-sub">
-          增发水管余量，越少越依赖二级<br>
-          <span style="color:var(--dim)">STRC 发行量 <span id="strc-issued" style="color:var(--text)">$--</span></span>
-        </div>
-      </div>
-      <div class="cycle-card">
-        <div class="cycle-card-title">🌡️ 飞轮健康度</div>
-        <div class="cycle-main" id="strc-score" style="color:var(--gold)">--/100</div>
-        <div class="cycle-sub">
-          <span id="strc-reasons" style="color:var(--dim)">加载中...</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="cycle-row" style="margin-top:-4px">
-      <div class="cycle-card">
-        <div class="cycle-card-title">STRC 单券 Runway</div>
-        <div class="cycle-main" id="strc-runway" style="color:var(--gold)">--月</div>
-        <div class="cycle-sub">
-          只看 STRC 股息覆盖<br>
-          <span id="strc-runway-note" style="color:var(--dim)">保守口径 --</span>
-        </div>
-      </div>
-      <div class="cycle-card">
-        <div class="cycle-card-title">全局 Runway</div>
-        <div class="cycle-main" id="global-runway" style="color:var(--gold)">--月</div>
-        <div class="cycle-sub">
-          全 preferred 股息 + 债息<br>
-          <span id="global-runway-note" style="color:var(--dim)">9M 降仓 · 6M 失去 income 属性</span>
-        </div>
-      </div>
-      <div class="cycle-card">
-        <div class="cycle-card-title">现金覆盖</div>
-        <div class="cycle-main" id="runway-cash" style="color:var(--blue)">$--</div>
-        <div class="cycle-sub">
-          年现金需求 <span id="runway-need" style="color:var(--text)">$--</span><br>
-          <span id="runway-headroom" style="color:var(--dim)">9M 余量 --</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="elec-control">
-      <span class="elec-label">电费:</span>
-      <input type="range" class="elec-slider" id="electricity" min="0.02" max="0.15" step="0.005" value="0.06">
-      <span class="elec-value" id="elec-value">$0.060/kWh</span>
-    </div>
-
-    <div class="percentiles">
-      <div class="pct-item" id="pct-25"><div class="pct-label">P25</div><div class="pct-value" id="p25-val">--</div></div>
-      <div class="pct-item active" id="pct-50"><div class="pct-label">P50</div><div class="pct-value" id="p50-val">--</div></div>
-      <div class="pct-item" id="pct-75"><div class="pct-label">P75</div><div class="pct-value" id="p75-val">--</div></div>
-      <div class="pct-item" id="pct-90"><div class="pct-label">P90</div><div class="pct-value" id="p90-val">--</div></div>
-    </div>
-
-    <div class="chart-section">
-      <div class="chart-title">矿机对比</div>
-      <div id="chart-container"></div>
-    </div>
-
-    <div class="table-section">
-      <div class="table-title">矿机详情</div>
-      <table class="miner-table">
-        <thead>
-          <tr><th>矿机型号</th><th>算力</th><th>功耗</th><th>功耗比</th><th>关机价</th><th>状态</th></tr>
-        </thead>
-        <tbody id="miner-tbody"></tbody>
-      </table>
-    </div>
-
-    <div class="footer">
-      <p>数据: Binance · mempool.space · Polymarket/Kalshi · STRC 飞轮 | <a href="https://x.com/bitfish" target="_blank">Fish</a></p>
-    </div>
-  </div>
+    <footer class="footer"><p>数据: Binance · mempool.space · Polymarket/Kalshi · STRC 飞轮 | <a href="https://x.com/bitfish" target="_blank" rel="noopener">Fish</a></p></footer>
+  </main>
 
   <script>
     const BLOCK_REWARD = 3.125;
