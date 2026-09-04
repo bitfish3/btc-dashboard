@@ -818,47 +818,55 @@
       return fetch(url, { signal: ctrl.signal }).finally(() => clearTimeout(timer));
     }
 
-    // BTC 价格：Binance → OKX → CoinGecko → Blockchain.info
+    // BTC 价格：Binance ∥ OKX 竞速 → CoinGecko → Blockchain.info
+    // 校验单源结果, 价格无效就 reject, 让竞速交给另一个源
+    function priceOk(price, chg) {
+      if (!isFinite(price) || price <= 0) return Promise.reject(new Error('bad price'));
+      return { price, chg: isFinite(chg) ? chg : 0 };
+    }
+
     async function fetchPrice() {
-      // Binance
+      // 主源: Binance 和 OKX 同时发起, 谁先成功用谁 (单源失败不影响另一源)
+      const binance = fetchTimeout('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT', 5000)
+        .then(r => r.json())
+        .then(d => priceOk(parseFloat(d.lastPrice), parseFloat(d.priceChangePercent)));
+      const okx = fetchTimeout('https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT', 5000)
+        .then(r => r.json())
+        .then(d => {
+          const t = d.data[0];
+          const chg = ((parseFloat(t.last) - parseFloat(t.open24h)) / parseFloat(t.open24h) * 100);
+          return priceOk(parseFloat(t.last), chg);
+        });
       try {
-        const r = await fetchTimeout('https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT', 5000);
-        const d = await r.json();
-        return { price: parseFloat(d.lastPrice), chg: parseFloat(d.priceChangePercent) };
+        return await Promise.any([binance, okx]);
       } catch (_) {}
-      // OKX
-      try {
-        const r = await fetchTimeout('https://www.okx.com/api/v5/market/ticker?instId=BTC-USDT', 5000);
-        const d = await r.json();
-        const t = d.data[0];
-        const chg = ((parseFloat(t.last) - parseFloat(t.open24h)) / parseFloat(t.open24h) * 100);
-        return { price: parseFloat(t.last), chg };
-      } catch (_) {}
+      // 兜底串行降级 (避免同时打 CoinGecko 触发限流)
       // CoinGecko
       try {
         const r = await fetchTimeout('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true', 5000);
         const d = await r.json();
-        return { price: d.bitcoin.usd, chg: d.bitcoin.usd_24h_change };
+        return await priceOk(d.bitcoin.usd, d.bitcoin.usd_24h_change);
       } catch (_) {}
       // Blockchain.info
       try {
         const r = await fetchTimeout('https://blockchain.info/ticker', 5000);
         const d = await r.json();
-        return { price: d.USD.last, chg: 0 };
+        return await priceOk(d.USD.last, 0);
       } catch (_) {}
       return null;
     }
 
     async function fetchData() {
-      try {
-        // 并行拉价格和算力
-        const [priceData, mRes] = await Promise.all([
-          fetchPrice(),
-          fetchTimeout('https://mempool.space/api/v1/mining/hashrate/3d', 8000)
-            .then(r => r.json()).catch(() => null)
-        ]);
+      // 价格和算力各走各的路: 谁先回来谁先上屏, 价格不再被算力请求拖累
+      const tryUpdate = () => {
+        try { if (currentPrice > 0 && currentDifficulty > 0) updateAll(); }
+        catch (e) { console.error('fetchData updateAll:', e); }
+      };
 
-        if (priceData) {
+      // 价格路径
+      const pricePath = fetchPrice()
+        .then(priceData => {
+          if (!priceData) return;
           currentPrice = priceData.price;
           const chg = priceData.chg;
           document.getElementById('btc-price').innerHTML =
@@ -867,17 +875,24 @@
             (chg >= 0 ? '↑' : '↓') + Math.abs(chg).toFixed(2) + '%</span>';
           cacheSet('price', priceData);
           renderVwap(); // VWAP 值固定(周更), 仅随现价刷新倍数
-        }
+        })
+        .catch(e => console.error('fetchData price:', e))
+        .then(tryUpdate);
 
-        if (mRes) {
+      // 算力路径
+      const hashPath = fetchTimeout('https://mempool.space/api/v1/mining/hashrate/3d', 8000)
+        .then(r => r.json())
+        .then(mRes => {
+          if (!mRes) return;
           currentDifficulty = mRes.currentDifficulty;
           const hrVal = (mRes.currentHashrate / 1e18).toFixed(1);
           document.getElementById('hashrate').textContent = hrVal + ' EH/s';
           cacheSet('hashrate', { diff: mRes.currentDifficulty, hr: hrVal });
-        }
+        })
+        .catch(e => console.error('fetchData hashrate:', e))
+        .then(tryUpdate);
 
-        if (currentPrice > 0 && currentDifficulty > 0) updateAll();
-      } catch (e) { console.error('fetchData:', e); }
+      await Promise.all([pricePath, hashPath]); // 两路均已各自 catch, 不会 reject
     }
 
     function calcShutdown(hr, pw, diff, elec) {
