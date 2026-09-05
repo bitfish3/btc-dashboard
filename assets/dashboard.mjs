@@ -24,6 +24,7 @@ import {
   parseFlywheelPayload,
   parseIssuancePayload
 } from './data-sources.mjs';
+import { createCycleTargets } from './cycle-targets.mjs';
 
 const BLOCK_REWARD = 3.125;
 
@@ -156,6 +157,7 @@ const state = {
 let store;
 let scheduler;
 let expiryTimer = null;
+let cycleTargets;
 
 const finitePositive = value => Number.isFinite(value) && value > 0;
 const finite = value => Number.isFinite(value);
@@ -344,6 +346,7 @@ function applyPrice(value, meta = {}) {
   renderAhr999();
   scheduleMiningRender();
   computeCyclePendulum();
+  cycleTargets?.update(isCurrent('price') ? state.price : null);
 }
 
 function applyHashrate(value) {
@@ -681,6 +684,7 @@ function refreshDerived() {
   renderAhr999();
   renderMnav();
   computeCyclePendulum();
+  cycleTargets?.update(isCurrent('price') ? state.price : null);
   scheduleMiningRender();
 }
 
@@ -1003,6 +1007,7 @@ export function bootDashboard() {
     'strc-flywheel': isValidFlywheelValue,
     'strc-issuance': isValidIssuanceValue
   } });
+  cycleTargets = createCycleTargets($('targets'));
   restoreCache();
   setupSlider();
   setupSkipLink();

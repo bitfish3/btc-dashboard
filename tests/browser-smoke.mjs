@@ -218,6 +218,33 @@ async function runScenario(browser, root, name, options = {}) {
     await page.goto(`${origin}/index.html`, { waitUntil: 'domcontentloaded' });
     result.timings.domContentLoaded = Date.now() - started;
 
+    if (name === 'cycle-targets') {
+      await page.waitForFunction(() => document.querySelector('[data-target-manual-cap]')?.textContent?.includes('$3.4T'), null, { timeout: 2500 });
+      check(/\$3\.4T/.test(await textOf('[data-target-manual-cap]')), 'reference target capitalization is visible');
+      check(/\$150K/.test(await textOf('[data-target-rows]')), '1% allocation target price is visible');
+      const beforeRequests = externalRequests.length;
+      const changedAt = Date.now();
+      await page.locator('#target-price').fill('180000');
+      await page.waitForFunction(() => document.querySelector('[data-target-manual-cap]')?.textContent?.includes('$3.6T'), null, { timeout: 100 });
+      check(Date.now() - changedAt <= 100, 'target input updates within 100ms');
+      await page.locator('[data-target-preset="reference"]').press('Enter');
+      await page.waitForFunction(() => document.querySelector('[data-target-manual-cap]')?.textContent?.includes('$3.4T'), null, { timeout: 2500 });
+      await page.locator('[data-target-preset="stress"]').press('Enter');
+      await page.waitForFunction(() => document.querySelector('[data-target-cumulative]')?.textContent?.includes('$280B'), null, { timeout: 2500 });
+      check(/\$280B/.test(await textOf('[data-target-cumulative]')), '5x stress funding is visible for the fixture quote');
+      await page.locator('#target-supply').fill('0');
+      await page.waitForFunction(() => !document.querySelector('[data-target-errors]')?.hidden, null, { timeout: 100 });
+      check((await textOf('[data-target-cumulative]')) === '--', 'invalid target parameters clear funding');
+      check(/\$100,000/.test(await textOf('#btc-price')), 'invalid target parameters leave the main quote intact');
+      await page.locator('[data-target-preset="reference"]').press('Enter');
+      await page.waitForFunction(() => document.querySelector('[data-target-errors]')?.hidden, null, { timeout: 100 });
+      check(externalRequests.length === beforeRequests, 'target controls add no network requests');
+      await page.locator('#targets').screenshot({ path: join(evidenceRoot, 'screenshots/cycle-targets-desktop.png') });
+      await page.setViewportSize({ width: 375, height: 812 });
+      check(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), 'target module fits a 375px viewport');
+      await page.locator('#targets').screenshot({ path: join(evidenceRoot, 'screenshots/cycle-targets-mobile.png') });
+    }
+
     if (name === 'expiry-refresh') {
       await page.waitForFunction(() => {
         const ids = ['#bp-ratio', '#wma200-ratio', '#ahr999', '#p50-val', '#mstr-mnav'];
@@ -236,6 +263,8 @@ async function runScenario(browser, root, name, options = {}) {
       check((await textOf('#p50-val')) === '--', 'expired mining percentile is cleared after refresh failure');
       check((await textOf('#mstr-mnav')) === '--', 'expired MSTR mNAV is cleared after refresh failure');
       check((await textOf('#bmnr-mnav')) === '--', 'expired BMNR mNAV is cleared after refresh failure');
+      check((await textOf('[data-target-cumulative]')) === '--', 'expired quote clears target funding');
+      check((await textOf('[data-target-manual-cap]')) === '$3.4T', 'target valuation remains visible without a fresh quote');
       await page.screenshot({ path: join(evidenceRoot, 'screenshots/expiry-refresh-safe-state.png'), fullPage: false });
     }
 
@@ -548,6 +577,7 @@ try {
     ['all-failed', undefined],
     ['storage-throw', { storageThrow: true }],
     ['late-quote-recompute', undefined],
+    ['cycle-targets', undefined],
   ]) {
     const scenario = await record(label, () => runScenario(browser, projectRoot, label, options));
     if (scenario) results.scenarios.push(scenario);
