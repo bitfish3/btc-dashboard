@@ -52,14 +52,8 @@ function fixtureData(input, scenario) {
   if (pathname.includes('/balancedPrice')) return { code: 100, data: [{ v: 50000 }] };
   if (pathname.includes('btc-cache') || pathname.endsWith('/latest')) return { mvrvz: highRisk ? 8 : 0.81, psip: null, ts: Date.now() };
   if (hostname === 'probs.fuckbtc.com' && pathname === '/api/forecast/2027') return {
-    year: 2027, semantics: 'touch_by_2027_end', status: 'fresh', fetchedAt: new Date().toISOString(),
+    year: scenario === 'forecast-wrong-year' ? 2028 : 2027, semantics: scenario === 'forecast-wrong-year' ? 'touch_by_2028_end' : 'touch_by_2027_end', status: 'fresh', fetchedAt: new Date().toISOString(),
     markets: [{ id: 'fixture-100', threshold: 100000, probability: 0.84, volume: 1000, liquidity: 17000, updatedAt: new Date().toISOString() }, { id: 'fixture-150', threshold: 150000, probability: 0.18, volume: 12000, liquidity: 12000, updatedAt: new Date().toISOString() }]
-  };
-  if (hostname === 'probs.fuckbtc.com' && pathname === '/api/forecast/2028') return scenario === 'forecast-year-isolated' ? {
-    year: 2028, semantics: 'touch_by_2028_end', status: 'fresh', fetchedAt: new Date().toISOString(),
-    markets: [{ threshold: 200000, probability: 0.35, volume: 15000 }]
-  } : scenario === 'forecast-year-mismatch' ? fixtureData(new URL('https://probs.fuckbtc.com/api/forecast/2027'), scenario) : {
-    year: 2028, semantics: 'touch_by_2028_end', status: 'not_listed', fetchedAt: null, ageSeconds: null, markets: []
   };
   if (hostname === 'probs.fuckbtc.com') return { survival: { downside: down } };
   if (hostname === 'flywheel-monitor.pages.dev') return {
@@ -193,7 +187,6 @@ async function runScenario(browser, root, name, options = {}) {
     }
     const kind = externalKind(requestUrl);
     if (name === 'mnav-snapshot-timeout' && kind === 'mnav' && !externalFailures) return; // Leave the request pending until its client deadline.
-    if (name === 'forecast-year-isolated' && kind === 'forecast-2027') return;
     const isolatedBtcFailure = name === 'bmnr-isolated' && (
       kind === 'price' || requestUrl.hostname === 'api.coingecko.com' || requestUrl.hostname === 'blockchain.info'
     );
@@ -207,7 +200,7 @@ async function runScenario(browser, root, name, options = {}) {
       return;
     }
     const legacyMnavFailure = ['mnav-failure-keeps-legacy', 'mnav-snapshot-no-atm', 'mnav-snapshot-invalid'].includes(name) && kind === 'mnav';
-    if (externalFailures || isolatedBtcFailure || legacyMnavFailure || name === 'all-failed') {
+    if (externalFailures || isolatedBtcFailure || legacyMnavFailure || name === 'all-failed' || (name === 'forecast-unavailable' && kind === 'forecast-2027')) {
       await route.fulfill(jsonResponse({ error: 'synthetic failure' }, 503));
       return;
     }
@@ -255,16 +248,10 @@ async function runScenario(browser, root, name, options = {}) {
     await page.goto(`${origin}/index.html`, { waitUntil: 'domcontentloaded' });
     result.timings.domContentLoaded = Date.now() - started;
 
-    if (name === 'forecast-year-isolated') {
-      await page.waitForFunction(() => document.querySelector('#forecast-2028-values [data-threshold="200000"] .prob-val')?.textContent === '35.0%', null, { timeout: 1000 });
-      check((await textOf('#forecast-2027-values')).includes('暂无'), 'hung 2027 request cannot populate a made-up quote');
-      check((await textOf('#forecast-2028-values')).includes('$200k'), '2028 independently renders its own threshold');
-      check((await textOf('[data-target-goal-price]')) === '22.5 万美元', 'year request failure leaves target model intact');
-    }
-    if (name === 'forecast-year-mismatch') {
-      await page.waitForFunction(() => document.querySelector('#forecast-2028-note')?.textContent === '更新暂不可用', null, { timeout: 2000 });
-      check(await page.locator('#forecast-2028-values [data-quoted="true"]').count() === 0, '2027 API payload cannot leak into the 2028 panel');
-      check((await textOf('#forecast-2027-values')).includes('84.0%'), '2027 panel remains independent of the rejected 2028 response');
+    if (['forecast-unavailable', 'forecast-wrong-year'].includes(name)) {
+      await page.waitForFunction(() => document.querySelector('#forecast-2027-note')?.textContent === '更新暂不可用', null, { timeout: 2000 });
+      check(JSON.stringify(await page.locator('#forecast-2027-values .prob-val').allTextContents()) === JSON.stringify(['--', '--']), 'failed or wrong-year data cannot fabricate 2027 probabilities');
+      check((await textOf('[data-target-goal-price]')) === '22.5 万美元', 'forecast failure leaves target model intact');
     }
 
     if (name.startsWith('mnav-snapshot-')) {
@@ -308,19 +295,22 @@ async function runScenario(browser, root, name, options = {}) {
       await page.waitForFunction(() => document.querySelector('[data-target-goal-price]')?.textContent === '22.5 万美元', null, { timeout: 2500 });
       check(await page.locator('#targets input').count() === 1, 'allocation is the only editable target parameter');
       check(await page.locator('#target-allocation').inputValue() === '1.5', 'target allocation defaults to 1.5%');
-      const targetLinks = await page.locator('#targets a').evaluateAll(links => links.map(link => link.href));
-      check(targetLinks.length === 2 && targetLinks.every(link => new URL(link).hostname === 'probs.fuckbtc.com'), 'target links only open the requested probability subsite');
-      check(targetLinks.every((link, index) => new URL(link).searchParams.get('year') === String(2027 + index)), 'each target panel links to its own year detail page');
+      check(await page.locator('#targets a').count() === 0, 'compact target row has no extra links');
       await page.waitForFunction(() => document.querySelector('#forecast-2027-values')?.textContent?.includes('84.0%'), null, {timeout: 2500});
       check((await textOf('#forecast-2027-values [data-threshold="150000"] .prob-val')) === '18.0%', '2027 market thresholds remain separate from the allocation target');
-      check((await textOf('#forecast-2027-note')).includes('非年底收盘价'), '2027 touch semantics are explicit');
-      await page.waitForFunction(() => document.querySelector('#forecast-2028-note')?.textContent?.includes('暂无可验证的 2028 年合约'), null, {timeout: 1000});
-      check(await page.locator('#forecast-2028-values [data-quoted="true"]').count() === 0, 'unlisted 2028 markets do not become zero probabilities');
-      for (const year of [2027, 2028]) {
-        const strikes = await page.locator(`#forecast-${year}-values .prob-tile`).evaluateAll(tiles => tiles.map(tile => tile.dataset.threshold));
-        check(JSON.stringify(strikes) === JSON.stringify(['100000','150000','200000','250000']), `${year} presents the four requested thresholds in order`);
+      check((await page.locator('#forecast-2027-note').textContent()).includes('非年底收盘价'), '2027 touch semantics remain available in methodology');
+      check(!await page.locator('#forecast-2027-note').isVisible(), 'source and freshness details stay inside the collapsed methodology');
+      const strikes = await page.locator('#forecast-2027-values .forecast-quote').evaluateAll(quotes => quotes.map(quote => quote.dataset.threshold));
+      check(JSON.stringify(strikes) === JSON.stringify(['100000','150000']), 'main row shows only the two requested 2027 thresholds');
+      check(await page.locator('#forecast-2028-values').count() === 0 && !externalRequests.some(request => request.url.includes('/api/forecast/2028')), 'hidden 2028 panel adds no homepage request');
+      for (const width of [320, 375, 1280]) {
+        await page.setViewportSize({ width, height: 812 });
+        const layout = await page.locator('#forecast-2027-values').evaluate(node => {
+          const top = [...node.children].map(child => child.getBoundingClientRect().top);
+          return { height: node.getBoundingClientRect().height, topSpread: Math.max(...top) - Math.min(...top), overflow: document.documentElement.scrollWidth - innerWidth };
+        });
+        check(layout.height < 26 && layout.topSpread < 3 && layout.overflow <= 1, `2027 probabilities fit one horizontal row at ${width}px`);
       }
-      check((await textOf('#forecast-2027-values [data-threshold="250000"] .prob-val')) === '--', 'missing upper strike is unknown instead of a fabricated probability');
       await page.waitForFunction(() => document.querySelector('[data-target-current-share]')?.textContent === '0.67%', null, { timeout: 2500 });
       check((await textOf('[data-target-current-price]')) === '10 万美元', 'current price and share are visible');
       const beforeRequests = externalRequests.length;
@@ -714,8 +704,8 @@ try {
     ['storage-throw', { storageThrow: true }],
     ['late-quote-recompute', undefined],
     ['cycle-targets', undefined],
-    ['forecast-year-isolated', undefined],
-    ['forecast-year-mismatch', undefined],
+    ['forecast-unavailable', undefined],
+    ['forecast-wrong-year', undefined],
   ]) {
     const scenario = await record(label, () => runScenario(browser, projectRoot, label, options));
     if (scenario) results.scenarios.push(scenario);

@@ -30,7 +30,7 @@ import {
 import { createCycleTargets } from './cycle-targets.mjs';
 
 const BLOCK_REWARD = 3.125;
-const FORECAST_STRIKES = [100000, 150000, 200000, 250000];
+const FORECAST_STRIKES = [100000, 150000];
 
 const MINERS = [
   { model: 'Antminer U3S23 Hyd.', hashrate: 1160, power: 11020 },
@@ -72,7 +72,6 @@ const TTL = Object.freeze({
   puell: 86400000,
   probs: 3600000,
   'forecast-2027': 86400000,
-  'forecast-2028': 86400000,
   mnav: 1800000,
   'mstr-mnav': 1800000,
   'bmnr-mnav': 1800000,
@@ -107,7 +106,6 @@ const INTERVAL = Object.freeze({
   puell: 3600000,
   probs: 1800000,
   'forecast-2027': 600000,
-  'forecast-2028': 600000,
   bp: 3600000,
   mnav: 1800000,
   'strc-flywheel': 1800000,
@@ -152,8 +150,7 @@ const state = {
   halving: null,
   probs: null,
   forecast2027: null,
-  forecast2028: null,
-  forecastFailed: { 2027: false, 2028: false },
+  forecastFailed: { 2027: false },
   mnav: null,
   mnavCompanies: { mstr: null, bmnr: null },
   mnavLegacy: null,
@@ -552,30 +549,13 @@ function applyForecast(value) {
   renderForecast(value.year);
 }
 
-function renderForecastTiles(node, markets) {
-  const signature = JSON.stringify(markets);
-  if (node.dataset.markets === signature && node.querySelector('.prob-tile')) return;
-  node.replaceChildren(...FORECAST_STRIKES.map(threshold => {
+function renderForecastValues(node, markets) {
+  for (const threshold of FORECAST_STRIKES) {
     const quote = markets.find(m => m.threshold === threshold);
-    const tile = document.createElement('div');
-    tile.className = 'prob-tile';
-    tile.dataset.threshold = String(threshold);
-    tile.dataset.quoted = String(Boolean(quote));
-    const strike = document.createElement('div');
-    strike.className = 'prob-strike';
-    strike.textContent = `触及 $${threshold / 1000}k`;
-    const probability = document.createElement('div');
-    probability.className = 'prob-val';
-    probability.textContent = quote ? `${(quote.probability * 100).toFixed(1)}%` : '--';
-    tile.append(strike, probability);
-    if (!quote) {
-      const unavailable = document.createElement('small');
-      unavailable.textContent = '暂无报价';
-      tile.append(unavailable);
-    }
-    return tile;
-  }));
-  node.dataset.markets = signature;
+    const probability = node.querySelector(`[data-threshold="${threshold}"] .prob-val`);
+    const text = quote ? `${(quote.probability * 100).toFixed(1)}%` : '--';
+    if (probability && probability.textContent !== text) probability.textContent = text;
+  }
 }
 
 function renderForecast(year) {
@@ -584,16 +564,16 @@ function renderForecast(year) {
   if (!node) return;
   const value = state[`forecast${year}`];
   if (!isValidForecastYear(value, year) || (value.status !== 'not_listed' && Date.now() - value.fetchedAt > 86400000)) {
-    renderForecastTiles(node, []);
+    renderForecastValues(node, []);
     if (note) note.textContent = state.forecastFailed[year] ? '更新暂不可用' : '等待有效合约报价';
     return;
   }
   if (value.status === 'not_listed') {
-    renderForecastTiles(node, []);
+    renderForecastValues(node, []);
     if (note) note.textContent = state.forecastFailed[year] ? '本次更新失败，等待有效合约报价' : `暂无可验证的 ${year} 年合约`;
     return;
   }
-  renderForecastTiles(node, value.markets);
+  renderForecastValues(node, value.markets);
   const messages = ['Polymarket', '非年底收盘价'];
   messages.push(`获取于 ${new Intl.DateTimeFormat('zh-CN', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}).format(new Date(value.fetchedAt))}`);
   if (value.markets.some(m => finite(m.volume) && m.volume < 10000)) messages.push('成交较少');
@@ -776,7 +756,7 @@ function scheduleMiningRender() {
 }
 
 function refreshDerived() {
-  for (const year of [2027, 2028]) renderForecast(year);
+  renderForecast(2027);
   renderVwap();
   renderAnchorRatios();
   renderAhr999();
@@ -905,7 +885,7 @@ function restoreCache() {
   applyCached('fng', readCached('fng', TTL.fng), applyFng);
   applyCached('halving', readCached('halving', TTL.halving), applyHalving);
   applyCached('probs', readCached('probs', TTL.probs), applyProbs);
-  for (const year of [2027, 2028]) applyCached(`forecast-${year}`, readCached(`forecast-${year}`, TTL[`forecast-${year}`]), applyForecast);
+  applyCached('forecast-2027', readCached('forecast-2027', TTL['forecast-2027']), applyForecast);
   const mstrRaw = readCached('mstr-mnav-input', TTL.mnav);
   const bmnrRaw = readCached('bmnr-mnav-input', TTL.mnav);
   const combined = readCached('mnav', TTL.mnav);
@@ -980,7 +960,7 @@ function makeTasks() {
     task('fng', async () => commit('fng', await fetchFearGreed(), applyFng)),
     task('halving', async () => commit('halving', await fetchHalving(), applyHalving)),
     task('probs', async () => commit('probs', await fetchProbabilities(), applyProbs)),
-    ...[2027, 2028].map(year => task(`forecast-${year}`, async () => commit(`forecast-${year}`, await fetchForecastYear(year), applyForecast))),
+    task('forecast-2027', async () => commit('forecast-2027', await fetchForecastYear(2027), applyForecast)),
     task('mnav', async () => commitMnav(await fetchMnav())),
     task('strc-flywheel', async () => commit('strc-flywheel', await fetchStrcFlywheel(), renderStrcFlywheel)),
     task('strc-issuance', async () => commit('strc-issuance', await fetchStrcIssuance(), renderStrcIssuance))
@@ -1015,7 +995,7 @@ function clearTaskDisplay(key) {
 }
 
 function onSchedulerStatus(status) {
-  if (['forecast-2027', 'forecast-2028'].includes(status.key)) {
+  if (status.key === 'forecast-2027') {
     const year = Number(status.key.slice(-4));
     if (status.phase === 'unavailable') state.forecastFailed[year] = true;
     renderForecast(year);
@@ -1113,8 +1093,7 @@ export function bootDashboard() {
     probs: value => Boolean(value && typeof value === 'object' && Object.values(value).every(probability => finite(probability) && probability >= 0 && probability <= 1)),
     'strc-flywheel': isValidFlywheelValue,
     'strc-issuance': isValidIssuanceValue,
-    'forecast-2027': value => isValidForecastYear(value, 2027),
-    'forecast-2028': value => isValidForecastYear(value, 2028)
+    'forecast-2027': value => isValidForecastYear(value, 2027)
   } });
   cycleTargets = createCycleTargets($('targets'));
   restoreCache();

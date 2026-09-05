@@ -482,16 +482,10 @@
     .target-method { margin-top: 8px; color: var(--dim); font-size: 12px; line-height: 1.6; }
     .target-method summary { cursor: pointer; width: fit-content; padding: 4px 0; }
     .target-method p { max-width: 800px; margin: 8px 0 0; }
-    .target-markets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 18px; }
-    .target-market { min-width: 0; color: var(--dim); font-size: 12px; line-height: 1.6; }
-    .target-market .panel-label { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px; }
-    .target-market .prob-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .target-market .prob-val { color: var(--gold); }
-    .target-market-note { margin-top: 7px; font-size: 12px; }
-    .target-market .prob-tile { min-height: 100px; }
-    .target-market .prob-tile[data-quoted="false"] .prob-val { color: var(--dim); }
-    .target-market .prob-tile small { display: block; margin-top: 3px; font-size: 11px; }
-    @media (max-width: 640px) { .target-markets { grid-template-columns: minmax(0, 1fr); gap: 16px; } }
+    .target-forecast-line { display: flex; align-items: baseline; gap: 12px; margin-top: 12px; color: var(--dim); font-size: 12px; line-height: 1.6; white-space: nowrap; }
+    .target-forecast-line .forecast-quote { display: inline-flex; align-items: baseline; gap: 4px; }
+    .target-forecast-line .prob-val { color: var(--gold); font-size: 13px; font-variant-numeric: tabular-nums; }
+    @media (max-width: 359px) { .target-forecast-line { gap: 8px; font-size: 11px; } .target-forecast-line .prob-val { font-size: 12px; } }
     .target-errors { margin: 10px 0 0; color: var(--red); font-size: 12px; line-height: 1.5; }
     .target-note { margin-top: 11px; color: var(--dim); font-size: 12px; line-height: 1.5; }
 
@@ -728,12 +722,8 @@
       </div>
       <p class="target-errors" data-target-errors role="alert" hidden></p>
       <p class="target-note" data-target-quote-note hidden></p>
-      <div class="target-markets" aria-label="2027 和 2028 高点预测市场">
-        <article class="target-market" aria-label="2027 高点概率"><div class="panel-label">2027 高点概率 <a class="section-link" href="https://probs.fuckbtc.com/?year=2027&amp;lang=zh" target="_blank" rel="noopener">完整分布</a></div><div class="prob-row" id="forecast-2027-values" aria-live="polite">加载中…</div><p class="target-market-note" id="forecast-2027-note"></p></article>
-        <article class="target-market" aria-label="2028 高点概率"><div class="panel-label">2028 高点概率 <a class="section-link" href="https://probs.fuckbtc.com/?year=2028&amp;lang=zh" target="_blank" rel="noopener">完整分布</a></div><div class="prob-row" id="forecast-2028-values" aria-live="polite">加载中…</div><p class="target-market-note" id="forecast-2028-note"></p></article>
-      </div>
-      <p class="target-market-note">各合约开市至对应年底（美东）曾触及该价位的概率；不等于该年内最高价。</p>
-      <details class="target-method"><summary>估算口径</summary><p id="target-method-note">假设全球可配置资产为 300 万亿美元、BTC 供给为 2,000 万枚。目标价 = 资产池 × 占比 ÷ BTC 数量；净流入 = 新增市值 ÷ 15–20 倍。资金推动价格的倍数会变化，以上为情景估算。</p></details>
+      <div class="target-forecast-line" id="forecast-2027-values" aria-label="2027 年底前触及概率" aria-describedby="forecast-2027-note" aria-live="polite"><span>2027 年</span><span class="forecast-quote" data-threshold="100000"><span>触及 $100k</span><strong class="prob-val">--</strong></span><span class="forecast-quote" data-threshold="150000"><span>触及 $150k</span><strong class="prob-val">--</strong></span></div>
+      <details class="target-method"><summary>估算口径</summary><p id="target-method-note">假设全球可配置资产为 300 万亿美元、BTC 供给为 2,000 万枚。目标价 = 资产池 × 占比 ÷ BTC 数量；净流入 = 新增市值 ÷ 15–20 倍。资金推动价格的倍数会变化，以上为情景估算。</p><p>预测市场概率表示各合约开市至 2027 年底（美东）曾触及该价位，不等于该年内最高价或年底收盘价。</p><p id="forecast-2027-note"></p></details>
     </section>
 
     <section class="workspace-section" id="risk" aria-labelledby="risk-title">
