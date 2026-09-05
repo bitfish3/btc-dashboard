@@ -1,0 +1,6 @@
+- [x] Add and verify public mNAV response projection and clean page rendering.
+- [x] Restore ten-period history and preserve it across public refreshes.
+- [x] Restore disclosed capital metrics and correct runway denominators/currency handling.
+- [x] Verify 2027 market slugs, individual dates and semantics against the first-party API.
+- [x] Implement bounded cached forecast API and the read-only target row.
+- [ ] Complete release validation and production read-back.

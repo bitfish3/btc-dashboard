@@ -9,7 +9,7 @@ export const DEFAULT_PARAMS = Object.freeze({
 });
 
 export const ALLOCATION_SCENARIOS = Object.freeze([0.01, 0.015, 0.02, 0.025, 0.03, 0.05]);
-export const DEFAULT_ALLOCATION_PCT = 2;
+export const DEFAULT_ALLOCATION_PCT = 1.5;
 
 const USD_T = 1e12;
 const BTC_M = 1e6;

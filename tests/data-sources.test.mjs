@@ -10,6 +10,7 @@ import {
   parseBinanceCandles,
   parseHalvingHeight,
   parseIssuancePayload,
+  parseForecast2027,
   parseMnavPayload,
   parseMvrvzPayload,
   parseOkxCandles,
@@ -20,6 +21,14 @@ import {
 function candles(count = 200, close = 100) {
   return Array.from({ length: count }, (_, index) => [Date.now() - (count - index) * 86400000, '0', '0', '0', String(close + index), '0']);
 }
+
+test('2027 forecast rejects wrong-year, wrong-semantics and invalid probabilities', () => {
+  const payload = { year: 2027, semantics: 'touch_by_2027_end', status: 'fresh', fetchedAt: new Date().toISOString(), markets: [{ threshold: 100000, probability: 0.84, volume: 1000, liquidity: 17000 }] };
+  assert.equal(parseForecast2027(payload).value.markets[0].probability, 0.84);
+  assert.throws(() => parseForecast2027({ ...payload, year: 2026 }));
+  assert.throws(() => parseForecast2027({ ...payload, semantics: 'year_end_price' }));
+  assert.throws(() => parseForecast2027({ ...payload, markets: [{ threshold: 100000, probability: 1.2 }] }));
+});
 
 test('nested public MSTR snapshot preserves the issuance disclosure clock', () => {
   const result = parseIssuancePayload({ ts: '2026-09-05T06:00:00Z', issuance: { ts: '2026-08-31T12:17:21Z', parsed: { strc: { atm_remaining_m: 17510.8 } } } });

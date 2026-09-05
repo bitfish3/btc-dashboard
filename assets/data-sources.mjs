@@ -15,10 +15,11 @@ const API = Object.freeze({
   puell: 'https://looknode-proxy.corms-cushier-0l.workers.dev/puellMultiple',
   balancedPrice: 'https://looknode-proxy.corms-cushier-0l.workers.dev/balancedPrice',
   mvrvz: 'https://btc-cache.corms-cushier-0l.workers.dev/latest',
-  mnav: 'https://looknode-proxy.corms-cushier-0l.workers.dev/mnav',
+  mnav: 'https://looknode-proxy.corms-cushier-0l.workers.dev/api/mnav',
   fng: 'https://api.alternative.me/fng/?limit=1',
   height: 'https://mempool.space/api/blocks/tip/height',
   probabilities: 'https://probs.fuckbtc.com/api/data',
+  forecast2027: 'https://probs.fuckbtc.com/api/forecast/2027',
   strcFlywheel: 'https://flywheel-monitor.pages.dev/snapshot.json',
   strcIssuance: 'https://mstr.fuckbtc.com/snapshot.json'
 });
@@ -430,6 +431,26 @@ export function isValidIssuanceValue(value) {
   return Boolean(value && typeof value === 'object' && NUMBER(value.atmRemainingM) && value.atmRemainingM >= 0);
 }
 
+export function isValidForecast2027(value) {
+  return Boolean(value && value.year === 2027 && value.semantics === 'touch_by_2027_end'
+    && ['fresh', 'partial', 'stale'].includes(value.status) && NUMBER(value.fetchedAt) && value.fetchedAt > 0
+    && value.fetchedAt <= Date.now() + 60000 && Array.isArray(value.markets) && value.markets.length > 0
+    && value.markets.every(m => [100000, 150000].includes(m.threshold) && NUMBER(m.probability) && m.probability >= 0 && m.probability <= 1));
+}
+
+export function parseForecast2027(payload) {
+  const value = {
+    year: payload?.year, semantics: payload?.semantics, status: payload?.status,
+    fetchedAt: timestamp(payload?.fetchedAt),
+    markets: Array.isArray(payload?.markets) ? payload.markets.map(m => ({
+      threshold: number(m.threshold), probability: number(m.probability),
+      volume: number(m.volume), liquidity: number(m.liquidity), updatedAt: timestamp(m.updatedAt)
+    })) : []
+  };
+  if (!isValidForecast2027(value)) invalid('2027 prediction data unavailable');
+  return record(value, 'prediction-market-2027', value.fetchedAt);
+}
+
 export function deriveAhr999(price, dailyCandles) {
   const btcPrice = positive(price);
   if (btcPrice == null || !dailyCandles?.closes) return null;
@@ -520,6 +541,10 @@ export function fetchStrcFlywheel(options = {}) {
 
 export function fetchStrcIssuance(options = {}) {
   return request(API.strcIssuance, { ...options, timeoutMs: 10000 }).then(parseIssuancePayload);
+}
+
+export function fetchForecast2027(options = {}) {
+  return request(API.forecast2027, { ...options, timeoutMs: 7000 }).then(parseForecast2027);
 }
 
 export { API };

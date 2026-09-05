@@ -6,6 +6,7 @@ import {
   fetchBalancedPrice,
   fetchDailyCandles,
   fetchFearGreed,
+  fetchForecast2027,
   fetchHalving,
   fetchHashrate,
   fetchMnav,
@@ -21,6 +22,7 @@ import {
   isValidFlywheelValue,
   isValidIssuanceValue,
   isValidMnavValue,
+  isValidForecast2027,
   parseFlywheelPayload,
   parseIssuancePayload
 } from './data-sources.mjs';
@@ -67,6 +69,7 @@ const TTL = Object.freeze({
   sopr: 86400000,
   puell: 86400000,
   probs: 3600000,
+  'forecast-2027': 86400000,
   mnav: 1800000,
   'mstr-mnav': 1800000,
   'bmnr-mnav': 1800000,
@@ -100,6 +103,7 @@ const INTERVAL = Object.freeze({
   sopr: 3600000,
   puell: 3600000,
   probs: 1800000,
+  'forecast-2027': 600000,
   bp: 3600000,
   mnav: 1800000,
   'strc-flywheel': 1800000,
@@ -143,6 +147,8 @@ const state = {
   fng: null,
   halving: null,
   probs: null,
+  forecast2027: null,
+  forecastFailed: false,
   mnav: null,
   mnavCompanies: { mstr: null, bmnr: null },
   mnavLegacy: null,
@@ -521,6 +527,33 @@ function applyMnav(value) {
   renderMnav();
 }
 
+function applyForecast2027(value) {
+  state.forecast2027 = value;
+  state.forecastFailed = false;
+  renderForecast2027();
+}
+
+function renderForecast2027() {
+  const node = $('forecast-2027-values');
+  const note = $('forecast-2027-note');
+  if (!node) return;
+  const value = state.forecast2027;
+  if (!isValidForecast2027(value) || Date.now() - value.fetchedAt > 86400000) {
+    node.textContent = '暂无可验证数据';
+    if (note) note.textContent = '';
+    return;
+  }
+  node.textContent = [...value.markets].sort((a, b) => a.threshold - b.threshold)
+    .map(m => `${m.threshold / 10000} 万美元 ${(m.probability * 100).toFixed(1)}%`).join(' · ');
+  const messages = ['Polymarket', '触价概率，非年底收盘价'];
+  messages.push(`获取于 ${new Intl.DateTimeFormat('zh-CN', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'}).format(new Date(value.fetchedAt))}`);
+  if (value.markets.some(m => finite(m.volume) && m.volume < 10000)) messages.push('成交较少');
+  if (state.forecastFailed) messages.push('更新失败，显示缓存');
+  else if (value.status === 'stale' || Date.now() - value.fetchedAt > 600000) messages.push('缓存数据');
+  if (value.status === 'partial') messages.push('部分合约可用');
+  if (note) note.textContent = messages.join(' · ');
+}
+
 function applyMnavCard(id, value, detail) {
   if (finitePositive(value)) {
     const element = $(id);
@@ -558,25 +591,25 @@ function renderMnav() {
       if ($('mstr-detail')) {
         if (officialMnav != null) {
           const asOf = sourceDateText(derived.mstr.officialMnavAsOf ?? derived.mstr.sourceAsOf);
-          $('mstr-detail').textContent = `${asOf} · ${derived.mstr.source || '官方 reported'}`;
+          $('mstr-detail').textContent = asOf.replace(/^源\s*/, '数据日期 ');
         } else if (derived.mstr.holdings != null && derived.mstr.stockPrice != null) {
           $('mstr-detail').textContent = `历史 EV/BTC 对照 · BTC ${derived.mstr.holdings.toLocaleString()} | $${derived.mstr.stockPrice}`;
         } else {
-          $('mstr-detail').textContent = '官方 mNAV 不可用：缺少 source_as_of';
+          $('mstr-detail').textContent = '官方 mNAV 暂不可用';
         }
       }
     });
     if ($('mstr-basic')) $('mstr-basic').textContent = finitePositive(derived.mstr.basic) ? `${derived.mstr.basic.toFixed(2)}x` : '--';
     if ($('mstr-ev')) $('mstr-ev').textContent = derived.mstr.ev == null ? '--' : `${derived.mstr.ev.toFixed(2)}x`;
     if ($('mstr-mnav-title')) $('mstr-mnav-title').textContent = officialMnav != null
-      ? '官方 mNAV · Price / Net BTC Per Share'
+      ? '官方 mNAV · Strategy'
       : '历史 EV/BTC 对照 · 非官方 mNAV';
-    if ($('mstr-detail') && officialMnav != null) $('mstr-detail').textContent = `${sourceDateText(derived.mstr.officialMnavAsOf ?? derived.mstr.sourceAsOf)} · ${derived.mstr.source || '官方 reported'}`;
+    if ($('mstr-detail') && officialMnav != null) $('mstr-detail').textContent = sourceDateText(derived.mstr.officialMnavAsOf ?? derived.mstr.sourceAsOf).replace(/^源\s*/, '数据日期 ');
     setMnavStatus('mstr', mstrEntry?.cached ? 'cached' : 'available', mstrEntry.meta);
   } else {
     if ($('mstr-mnav')) $('mstr-mnav').textContent = '--';
-    if ($('mstr-mnav-title')) $('mstr-mnav-title').textContent = '官方 mNAV · Price / Net BTC Per Share';
-    if ($('mstr-detail')) $('mstr-detail').textContent = '数据不可用：缺少官方 mNAV 与有效 source_as_of';
+    if ($('mstr-mnav-title')) $('mstr-mnav-title').textContent = '官方 mNAV · Strategy';
+    if ($('mstr-detail')) $('mstr-detail').textContent = '官方 mNAV 暂不可用';
     setMnavStatus('mstr', mstrEntry ? 'stale' : 'unavailable', mstrEntry?.meta || { error: '缺少有效 MSTR 数据' });
   }
   if (derived.bmnr) {
@@ -694,6 +727,7 @@ function scheduleMiningRender() {
 }
 
 function refreshDerived() {
+  renderForecast2027();
   renderVwap();
   renderAnchorRatios();
   renderAhr999();
@@ -776,11 +810,11 @@ function renderStrcFlywheel(value) {
   const runway = value.strc_runway;
   if (finite(runway?.runway_months)) {
     if ($('strc-runway')) $('strc-runway').textContent = `${runway.runway_months.toFixed(1)}月`;
-    if ($('strc-runway-note')) $('strc-runway-note').textContent = `保守口径 ${finite(runway.runway_months_conservative) ? runway.runway_months_conservative.toFixed(1) : '--'}月 · 月股息 ${fmtMillions(runway.monthly_dividend)}`;
+    if ($('strc-runway-note')) $('strc-runway-note').textContent = `${finite(runway.runway_months_conservative) ? `保守口径 ${runway.runway_months_conservative.toFixed(1)}月 · ` : ''}月股息 ${fmtMillions(runway.monthly_dividend)}`;
   }
   const globalRunway = value.global_runway;
   if (finite(globalRunway?.runway_months) && $('global-runway')) $('global-runway').textContent = `${globalRunway.runway_months.toFixed(1)}月`;
-  if (globalRunway && $('global-runway-note')) $('global-runway-note').textContent = `状态 ${globalRunway.status || '--'} · 债息假设 ${finite(globalRunway.debt_interest_rate) ? (globalRunway.debt_interest_rate * 100).toFixed(1) : '--'}%`;
+  if (globalRunway && $('global-runway-note')) $('global-runway-note').textContent = `状态 ${globalRunway.status || '--'} · ${finite(globalRunway.debt_interest_rate) ? `债息假设 ${(globalRunway.debt_interest_rate * 100).toFixed(1)}%` : '按披露的年度现金需求'}`;
   if (finite(globalRunway?.cash) && $('runway-cash')) $('runway-cash').textContent = fmtBillions(globalRunway.cash);
   if (finite(globalRunway?.annual_cash_need) && $('runway-need')) $('runway-need').textContent = `${fmtBillions(globalRunway.annual_cash_need)}/年`;
   if (globalRunway && $('runway-headroom')) $('runway-headroom').textContent = `9M余量 ${fmtMillions(globalRunway.headroom_to_9m)} · 6M余量 ${fmtMillions(globalRunway.headroom_to_6m)}`;
@@ -821,6 +855,7 @@ function restoreCache() {
   applyCached('fng', readCached('fng', TTL.fng), applyFng);
   applyCached('halving', readCached('halving', TTL.halving), applyHalving);
   applyCached('probs', readCached('probs', TTL.probs), applyProbs);
+  applyCached('forecast-2027', readCached('forecast-2027', TTL['forecast-2027']), applyForecast2027);
   const mstrRaw = readCached('mstr-mnav-input', TTL.mnav);
   const bmnrRaw = readCached('bmnr-mnav-input', TTL.mnav);
   const combined = readCached('mnav', TTL.mnav);
@@ -895,6 +930,7 @@ function makeTasks() {
     task('fng', async () => commit('fng', await fetchFearGreed(), applyFng)),
     task('halving', async () => commit('halving', await fetchHalving(), applyHalving)),
     task('probs', async () => commit('probs', await fetchProbabilities(), applyProbs)),
+    task('forecast-2027', async () => commit('forecast-2027', await fetchForecast2027(), applyForecast2027)),
     task('mnav', async () => commitMnav(await fetchMnav())),
     task('strc-flywheel', async () => commit('strc-flywheel', await fetchStrcFlywheel(), renderStrcFlywheel)),
     task('strc-issuance', async () => commit('strc-issuance', await fetchStrcIssuance(), renderStrcIssuance))
@@ -929,6 +965,11 @@ function clearTaskDisplay(key) {
 }
 
 function onSchedulerStatus(status) {
+  if (status.key === 'forecast-2027') {
+    if (status.phase === 'unavailable') state.forecastFailed = true;
+    renderForecast2027();
+    return;
+  }
   if (status.key === 'mnav') {
     for (const company of ['mstr', 'bmnr']) {
       const entry = state.mnavCompanies[company];
@@ -1020,7 +1061,8 @@ export function bootDashboard() {
     halving: value => Boolean(value && Number.isInteger(value.height) && finite(value.days) && finite(value.progress)),
     probs: value => Boolean(value && typeof value === 'object' && Object.values(value).every(probability => finite(probability) && probability >= 0 && probability <= 1)),
     'strc-flywheel': isValidFlywheelValue,
-    'strc-issuance': isValidIssuanceValue
+    'strc-issuance': isValidIssuanceValue,
+    'forecast-2027': isValidForecast2027
   } });
   cycleTargets = createCycleTargets($('targets'));
   restoreCache();

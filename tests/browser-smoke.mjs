@@ -51,6 +51,10 @@ function fixtureData(input, scenario) {
   if (pathname.includes('/puellMultiple')) return { code: 100, data: [{ v: highRisk ? 5 : 1.2 }] };
   if (pathname.includes('/balancedPrice')) return { code: 100, data: [{ v: 50000 }] };
   if (pathname.includes('btc-cache') || pathname.endsWith('/latest')) return { mvrvz: highRisk ? 8 : 0.81, psip: null, ts: Date.now() };
+  if (hostname === 'probs.fuckbtc.com' && pathname === '/api/forecast/2027') return {
+    year: 2027, semantics: 'touch_by_2027_end', status: 'fresh', fetchedAt: new Date().toISOString(),
+    markets: [{ id: 'fixture-100', threshold: 100000, probability: 0.84, volume: 1000, liquidity: 17000, updatedAt: new Date().toISOString() }, { id: 'fixture-150', threshold: 150000, probability: 0.18, volume: 12000, liquidity: 12000, updatedAt: new Date().toISOString() }]
+  };
   if (hostname === 'probs.fuckbtc.com') return { survival: { downside: down } };
   if (hostname === 'flywheel-monitor.pages.dev') return {
     strc: { price: 97.33, change_pct: 1.2 },
@@ -97,6 +101,7 @@ function externalKind(input) {
   if (hostname === 'btc-cache.corms-cushier-0l.workers.dev' || pathname.endsWith('/latest')) return 'mvrvz';
   if (hostname === 'api.alternative.me') return 'fng';
   if (pathname.includes('blocks/tip/height')) return 'halving';
+  if (hostname === 'probs.fuckbtc.com' && pathname === '/api/forecast/2027') return 'forecast-2027';
   if (hostname === 'probs.fuckbtc.com') return 'probs';
   return 'other';
 }
@@ -228,9 +233,13 @@ async function runScenario(browser, root, name, options = {}) {
     result.timings.domContentLoaded = Date.now() - started;
 
     if (name === 'cycle-targets') {
-      await page.waitForFunction(() => document.querySelector('[data-target-goal-price]')?.textContent === '30 万美元', null, { timeout: 2500 });
+      await page.waitForFunction(() => document.querySelector('[data-target-goal-price]')?.textContent === '22.5 万美元', null, { timeout: 2500 });
       check(await page.locator('#targets input').count() === 1, 'allocation is the only editable target parameter');
-      check(await page.locator('#target-allocation').inputValue() === '2', 'target allocation defaults to 2%');
+      check(await page.locator('#target-allocation').inputValue() === '1.5', 'target allocation defaults to 1.5%');
+      check(await page.locator('#targets a').count() === 0, 'target reference external link is removed');
+      await page.waitForFunction(() => document.querySelector('#forecast-2027-values')?.textContent?.includes('84.0%'), null, {timeout: 2500});
+      check((await textOf('#forecast-2027-values')).includes('15 万美元 18.0%'), '2027 market thresholds remain separate from the allocation target');
+      check((await textOf('#forecast-2027-note')).includes('非年底收盘价'), '2027 touch semantics are explicit');
       await page.waitForFunction(() => document.querySelector('[data-target-current-share]')?.textContent === '0.67%', null, { timeout: 2500 });
       check((await textOf('[data-target-current-price]')) === '10 万美元', 'current price and share are visible');
       const beforeRequests = externalRequests.length;
@@ -243,11 +252,11 @@ async function runScenario(browser, root, name, options = {}) {
       await page.waitForFunction(() => !document.querySelector('[data-target-errors]')?.hidden, null, { timeout: 100 });
       check((await textOf('[data-target-cumulative]')) === '--', 'invalid target parameters clear funding');
       check(/\$100,000/.test(await textOf('#btc-price')), 'invalid target parameters leave the main quote intact');
-      await page.locator('#target-allocation').fill('2');
+      await page.locator('#target-allocation').fill('1.5');
       await page.waitForFunction(() => document.querySelector('[data-target-errors]')?.hidden, null, { timeout: 100 });
       await page.locator('#target-allocation').press('ArrowUp');
-      await page.waitForFunction(() => document.querySelector('[data-target-goal-price]')?.textContent === '31.5 万美元', null, { timeout: 100 });
-      await page.locator('#target-allocation').fill('2');
+      await page.waitForFunction(() => document.querySelector('[data-target-goal-price]')?.textContent === '24 万美元', null, { timeout: 100 });
+      await page.locator('#target-allocation').fill('1.5');
       check(externalRequests.length === beforeRequests, 'target controls add no network requests');
       await page.locator('#targets').screenshot({ path: join(evidenceRoot, 'screenshots/cycle-targets-desktop.png') });
       await page.setViewportSize({ width: 375, height: 812 });
@@ -274,7 +283,7 @@ async function runScenario(browser, root, name, options = {}) {
       check((await textOf('#mstr-mnav')) === '--', 'expired MSTR mNAV is cleared after refresh failure');
       check((await textOf('#bmnr-mnav')) === '--', 'expired BMNR mNAV is cleared after refresh failure');
       check((await textOf('[data-target-cumulative]')) === '待报价', 'expired quote clears target funding');
-      check((await textOf('[data-target-goal-price]')) === '30 万美元', 'target valuation remains visible without a fresh quote');
+      check((await textOf('[data-target-goal-price]')) === '22.5 万美元', 'target valuation remains visible without a fresh quote');
       await page.screenshot({ path: join(evidenceRoot, 'screenshots/expiry-refresh-safe-state.png'), fullPage: false });
     }
 
@@ -290,7 +299,7 @@ async function runScenario(browser, root, name, options = {}) {
       check(/[0-9.]+/.test(await textOf('#bp-ratio')), 'poisoned cache does not block derived BP ratio');
       check(/[0-9.]+x/.test(await textOf('#mstr-mnav')), 'poisoned mNAV cache does not replace valid network mNAV');
       check((await textOf('#mstr-mnav-title')).includes('官方 mNAV'), 'MSTR headline uses official reported mNAV label');
-      check((await textOf('#mstr-detail')).includes('源'), 'MSTR official mNAV keeps source date detail');
+      check((await textOf('#mstr-detail')).includes('日期'), 'MSTR official mNAV keeps its data date');
       check(/97\.33/.test(await textOf('#strc-price')), 'poisoned STRC cache does not replace valid network STRC');
       const poisonedText = await body();
       check(!/oops|NaN|Infinity/.test(poisonedText), 'poisoned cache leaves no oops/NaN/Infinity text');
@@ -324,7 +333,7 @@ async function runScenario(browser, root, name, options = {}) {
       await page.waitForFunction(() => document.querySelector('#mstr-mnav')?.textContent?.trim() === '1.15x', null, { timeout: 2500 });
       check((await textOf('#mstr-mnav')) === '1.15x', 'official MSTR mNAV renders without BTC/share inputs');
       check((await textOf('#mstr-mnav-title')).includes('官方 mNAV'), 'official-only MSTR record keeps official headline label');
-      check((await textOf('#mstr-detail')).includes('源'), 'official-only MSTR record keeps independent source date');
+      check((await textOf('#mstr-detail')).includes('日期'), 'official-only MSTR record keeps independent data date');
       check((await textOf('#mstr-basic')) === '--', 'official-only MSTR record does not invent Basic comparison');
     }
 
@@ -359,7 +368,7 @@ async function runScenario(browser, root, name, options = {}) {
     const allText = await body();
     check(!/NaN|Infinity/.test(allText), 'all-failed state contains no NaN or Infinity');
     check(!/加载中\.\.\.|计算中…/.test(allText), 'all-failed state leaves indefinite loading labels');
-    check(!/%/.test(await textOf('#psip-value')), 'PSIP does not fabricate a percentage when source is unavailable');
+    check(await page.locator('#psip-value').count() === 0, 'unavailable PSIP module is removed');
     check(!/[0-9.]+x/.test(await textOf('#mstr-mnav')), 'MSTR mNAV remains unavailable without valid inputs');
     check(!/[0-9.]+x/.test(await textOf('#bmnr-mnav')), 'BMNR mNAV remains unavailable without valid inputs');
     await page.screenshot({ path: join(evidenceRoot, 'screenshots/all-failed-safe-state.png'), fullPage: false });
@@ -441,11 +450,11 @@ async function runResponsive(browser, root) {
     const halvingLayout = await page.evaluate(() => {
       const halving = document.querySelector('#halving-days');
       const top = selector => document.querySelector(selector).closest('.cycle-card').getBoundingClientRect().top;
-      return { inMatrix: Boolean(halving.closest('.matrix-grid')), halvingTop: top('#halving-days'), firstTop: top('#mvrv-value'), psipTop: top('#psip-value') };
+      return { inMatrix: Boolean(halving.closest('.matrix-grid')), halvingTop: top('#halving-days'), firstTop: top('#mvrv-value'), puellTop: top('#puell-value') };
     });
     assert.ok(halvingLayout.inMatrix, 'halving is grouped with the cycle metrics');
     if (viewport.width >= 1025) assert.equal(halvingLayout.halvingTop, halvingLayout.firstTop, 'desktop cycle metrics occupy one row');
-    if (viewport.width >= 360 && viewport.width <= 767) assert.equal(halvingLayout.halvingTop, halvingLayout.psipTop, 'mobile halving shares the PSIP row');
+    if (viewport.width >= 360 && viewport.width <= 767) assert.equal(halvingLayout.halvingTop, halvingLayout.puellTop, 'mobile halving shares the Puell row');
     if (viewport.width === 390 || viewport.width === 375) {
       await page.locator('.fng-section').evaluate(card => card.scrollIntoView({ block: 'center' }));
       await page.locator('.fng-section').screenshot({ path: join(evidenceRoot, `screenshots/sentiment-mobile-${viewport.width}.png`) });
