@@ -20,6 +20,7 @@ const API = Object.freeze({
   height: 'https://mempool.space/api/blocks/tip/height',
   probabilities: 'https://probs.fuckbtc.com/api/data',
   forecast2027: 'https://probs.fuckbtc.com/api/forecast/2027',
+  forecast2028: 'https://probs.fuckbtc.com/api/forecast/2028',
   strcFlywheel: 'https://flywheel-monitor.pages.dev/snapshot.json',
   strcIssuance: 'https://mstr.fuckbtc.com/snapshot.json'
 });
@@ -461,14 +462,20 @@ export function isValidIssuanceValue(value) {
   return NUMBER(value.atmRemainingM) && value.atmRemainingM >= 0;
 }
 
-export function isValidForecast2027(value) {
-  return Boolean(value && value.year === 2027 && value.semantics === 'touch_by_2027_end'
-    && ['fresh', 'partial', 'stale'].includes(value.status) && NUMBER(value.fetchedAt) && value.fetchedAt > 0
-    && value.fetchedAt <= Date.now() + 60000 && Array.isArray(value.markets) && value.markets.length > 0
-    && value.markets.every(m => [100000, 150000].includes(m.threshold) && NUMBER(m.probability) && m.probability >= 0 && m.probability <= 1));
+export function isValidForecastYear(value, year) {
+  if (![2027, 2028].includes(year) || value?.year !== year || value.semantics !== `touch_by_${year}_end`
+    || !Array.isArray(value.markets)) return false;
+  if (value.status === 'not_listed') return value.markets.length === 0 && value.fetchedAt == null;
+  return ['fresh', 'partial', 'stale'].includes(value.status) && NUMBER(value.fetchedAt) && value.fetchedAt > 0
+    && value.fetchedAt <= Date.now() + 60000 && value.markets.length > 0
+    && new Set(value.markets.map(m => m?.threshold)).size === value.markets.length
+    && value.markets.every(m => Number.isSafeInteger(m?.threshold) && m.threshold > 0
+      && NUMBER(m.probability) && m.probability >= 0 && m.probability <= 1);
 }
 
-export function parseForecast2027(payload) {
+export function isValidForecast2027(value) { return isValidForecastYear(value, 2027); }
+
+export function parseForecastYear(payload, year) {
   const value = {
     year: payload?.year, semantics: payload?.semantics, status: payload?.status,
     fetchedAt: timestamp(payload?.fetchedAt),
@@ -477,9 +484,11 @@ export function parseForecast2027(payload) {
       volume: number(m.volume), liquidity: number(m.liquidity), updatedAt: timestamp(m.updatedAt)
     })) : []
   };
-  if (!isValidForecast2027(value)) invalid('2027 prediction data unavailable');
-  return record(value, 'prediction-market-2027', value.fetchedAt);
+  if (!isValidForecastYear(value, year)) invalid(`${year} prediction data unavailable`);
+  return record(value, `prediction-market-${year}`, value.fetchedAt);
 }
+
+export function parseForecast2027(payload) { return parseForecastYear(payload, 2027); }
 
 export function deriveAhr999(price, dailyCandles) {
   const btcPrice = positive(price);
@@ -574,7 +583,12 @@ export function fetchStrcIssuance(options = {}) {
 }
 
 export function fetchForecast2027(options = {}) {
-  return request(API.forecast2027, { ...options, timeoutMs: 7000 }).then(parseForecast2027);
+  return fetchForecastYear(2027, options);
+}
+
+export function fetchForecastYear(year, options = {}) {
+  if (![2027, 2028].includes(year)) throw new Error('unsupported prediction year');
+  return request(API[`forecast${year}`], { ...options, timeoutMs: 7000 }).then(payload => parseForecastYear(payload, year));
 }
 
 export { API };

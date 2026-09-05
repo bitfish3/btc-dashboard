@@ -8,11 +8,13 @@ import {
   isValidFlywheelValue,
   isCurrentMstrSnapshot,
   isValidIssuanceValue,
+  isValidForecastYear,
   isValidMnavValue,
   parseBinanceCandles,
   parseHalvingHeight,
   parseIssuancePayload,
   parseForecast2027,
+  parseForecastYear,
   parseMnavPayload,
   parseMvrvzPayload,
   parseOkxCandles,
@@ -43,6 +45,26 @@ test('2027 forecast rejects wrong-year, wrong-semantics and invalid probabilitie
   assert.throws(() => parseForecast2027({ ...payload, year: 2026 }));
   assert.throws(() => parseForecast2027({ ...payload, semantics: 'year_end_price' }));
   assert.throws(() => parseForecast2027({ ...payload, markets: [{ threshold: 100000, probability: 1.2 }] }));
+});
+
+test('forecast years remain isolated and missing contracts cannot become zero probabilities', () => {
+  const empty = { year: 2028, semantics: 'touch_by_2028_end', status: 'not_listed', fetchedAt: null, markets: [] };
+  assert.deepEqual(parseForecastYear(empty, 2028).value.markets, []);
+  assert.equal(isValidForecastYear(parseForecastYear(empty, 2028).value, 2028), true);
+  assert.throws(() => parseForecastYear(empty, 2027));
+  assert.throws(() => parseForecastYear({ ...empty, semantics: 'touch_by_2027_end' }, 2028));
+  assert.throws(() => parseForecastYear({ ...empty, markets: [{ threshold: 100000, probability: 0 }] }, 2028));
+  assert.throws(() => parseForecastYear({ ...empty, year: 2029 }, 2029));
+});
+
+test('forecast adapters validate duplicate strikes, future clocks and independent 2028 quotes', () => {
+  const payload = { year: 2028, semantics: 'touch_by_2028_end', status: 'fresh', fetchedAt: new Date().toISOString(), markets: [{ threshold: 200000, probability: 0.35 }] };
+  assert.equal(parseForecastYear(payload, 2028).value.markets[0].probability, 0.35);
+  assert.throws(() => parseForecastYear(payload, 2027));
+  assert.throws(() => parseForecastYear({ ...payload, fetchedAt: new Date(Date.now() + 120000).toISOString() }, 2028));
+  assert.throws(() => parseForecastYear({ ...payload, markets: [...payload.markets, ...payload.markets] }, 2028));
+  assert.throws(() => parseForecastYear({ ...payload, markets: [{ threshold: -1, probability: 0.3 }] }, 2028));
+  assert.throws(() => parseForecastYear({ ...payload, markets: [{ threshold: 200000, probability: true }] }, 2028));
 });
 
 test('nested public MSTR snapshot preserves the issuance disclosure clock', () => {
