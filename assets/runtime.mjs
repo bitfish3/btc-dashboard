@@ -206,19 +206,28 @@ function cloneRecord(record) {
   };
 }
 
-function timestampFrom(value) {
-  if (value instanceof Date) return value.getTime();
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string' && value.trim() !== '') {
-    const parsed = Date.parse(value);
-    return Number.isFinite(parsed) ? parsed : null;
+function normalizeDataAt(value, currentTime) {
+  if (value == null) return { value: null, future: false };
+  if (value instanceof Date) {
+    const timestamp = value.getTime();
+    if (!Number.isFinite(timestamp) || timestamp < 0) return { value: null, future: false };
+    if (timestamp > currentTime) return { value: null, future: true };
+    return { value: value.toISOString(), future: false };
   }
-  return null;
-}
-
-function isFutureTimestamp(value, currentTime) {
-  const timestamp = timestampFrom(value);
-  return timestamp !== null && Number.isFinite(timestamp) && timestamp > currentTime;
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value) || value < 0) return { value: null, future: false };
+    return value > currentTime
+      ? { value: null, future: true }
+      : { value, future: false };
+  }
+  if (typeof value === 'string' && value.trim() !== '') {
+    const timestamp = Date.parse(value);
+    if (!Number.isFinite(timestamp) || timestamp < 0) return { value: null, future: false };
+    return timestamp > currentTime
+      ? { value: null, future: true }
+      : { value, future: false };
+  }
+  return { value: null, future: false };
 }
 
 /**
@@ -247,13 +256,13 @@ export function createStore(options = {}) {
     if (typeof rawTime !== 'number' || !Number.isFinite(rawTime) || rawTime < 0 || rawTime > now()) return null;
     const t = rawTime;
     const value = Object.prototype.hasOwnProperty.call(raw, 'v') ? raw.v : raw.value;
-    const dataAt = raw.dataAt ?? raw.data_at ?? null;
-    if (!validate(key, value) || isFutureTimestamp(dataAt, now())) return null;
+    const dataAt = normalizeDataAt(raw.dataAt ?? raw.data_at, now());
+    if (!validate(key, value) || dataAt.future) return null;
     return {
       t,
       value,
-      dataAt,
-      source: raw.source ?? null,
+      dataAt: dataAt.value,
+      source: typeof raw.source === 'string' ? raw.source : null,
     };
   };
 
@@ -291,14 +300,16 @@ export function createStore(options = {}) {
   const set = (key, value, metadata = {}) => {
     if (typeof key !== 'string' || key.length === 0 || !validate(key, value)) return null;
     const currentTime = now();
-    if (!Number.isFinite(currentTime) || currentTime < 0 || isFutureTimestamp(metadata.dataAt, currentTime)) {
+    if (!Number.isFinite(currentTime) || currentTime < 0) {
       return null;
     }
+    const dataAt = normalizeDataAt(metadata.dataAt, currentTime);
+    if (dataAt.future) return null;
     const record = {
       t: currentTime,
       value,
-      dataAt: metadata.dataAt ?? null,
-      source: metadata.source ?? null,
+      dataAt: dataAt.value,
+      source: typeof metadata.source === 'string' ? metadata.source : null,
     };
     // Memory is the required last-good path. Persistence is best effort.
     memory.set(key, record);

@@ -172,10 +172,11 @@ test('store keeps memory available when persistence throws and notifies subscrib
 });
 
 test('store requires validators to return true and rejects future data_at', () => {
-  let current = 1_000;
+  let current = 10_000;
   const storage = new Map([
-    ['btc_truthy', JSON.stringify({ t: 900, v: 1 })],
-    ['btc_future-data', JSON.stringify({ t: 900, v: 1, data_at: 2_000 })],
+    ['btc_truthy', JSON.stringify({ t: 9_000, v: 1 })],
+    ['btc_future-data', JSON.stringify({ t: 9_000, v: 1, data_at: '1970-01-01T00:00:11.000Z' })],
+    ['btc_bad-date', JSON.stringify({ t: 9_000, v: 1, data_at: 'nonsense', source: { untrusted: true } })],
   ]);
   const store = createStore({
     now: () => current,
@@ -185,8 +186,18 @@ test('store requires validators to return true and rejects future data_at', () =
     },
     validators: { truthy: () => 1, 'future-data': () => true },
   });
-  assert.equal(store.get('truthy', 200), null);
+  assert.equal(store.get('truthy', 2_000), null);
   assert.equal(store.getRecord('future-data'), null);
+  assert.deepEqual(store.getRecord('bad-date'), {
+    t: 9_000, value: 1, v: 1, dataAt: null, source: null,
+  });
+  const invalidMetadata = store.set('metric', 2, { dataAt: 'nonsense', source: 42 });
+  assert.equal(invalidMetadata.dataAt, null);
+  assert.equal(invalidMetadata.source, null);
+  assert.equal(store.set('epoch', 3, { dataAt: 0 }).dataAt, 0);
+  assert.equal(store.set('date', 4, { dataAt: new Date(0) }).dataAt, '1970-01-01T00:00:00.000Z');
+  assert.equal(store.set('future', 5, { dataAt: '1970-01-01T00:00:11.000Z' }), null);
+  assert.equal(store.set('infinite', 6, { dataAt: Infinity })?.dataAt, null);
 });
 
 test('scheduler shares an in-flight run and reports lifecycle state', async () => {
