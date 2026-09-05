@@ -64,6 +64,36 @@ test('mNAV rejects incomplete records without default BTC/ETH quotes', () => {
   assert.equal(deriveMnav(partial.value, 65000).bmnr, null);
 });
 
+test('official MSTR mNAV survives without current BTC/share inputs and keeps its source date', () => {
+  const parsed = parseMnavPayload({
+    mstr: {
+      official_mnav: 1.15,
+      official_mnav_as_of: '2026-09-04',
+      source_as_of: { home: '2026-09-04', shares: '2026-08-30', ledger: '2026-08-31', notes: '2026-09-04' },
+      source: 'strategy.com'
+    }
+  });
+  assert.equal(parsed.value.mstr.officialMnav, 1.15);
+  assert.equal(parsed.value.mstr.officialMnavAsOf, Date.parse('2026-09-04'));
+  assert.deepEqual(parsed.value.mstr.sourceAsOf, { home: '2026-09-04', shares: '2026-08-30', ledger: '2026-08-31', notes: '2026-09-04' });
+  assert.equal(deriveMnav(parsed.value, null).mstr.officialMnav, 1.15);
+  assert.equal(isValidMnavValue(parsed.value), true);
+});
+
+test('generic mnav field is not promoted to official mNAV', () => {
+  assert.throws(() => parseMnavPayload({ mstr: { mnav: 1.15 } }), /complete company/);
+});
+
+test('legacy EV/BTC remains a separate derived comparison when official mNAV is absent', () => {
+  const parsed = parseMnavPayload({
+    mstr: { btc_holdings: 100000, shares: 200000000, stock_price: 300, debt: 100, pref: 50, cash: 25 }
+  });
+  const result = deriveMnav(parsed.value, 65000);
+  assert.equal(result.mstr.officialMnav, undefined);
+  assert.equal(result.mstr.legacy, true);
+  assert.ok(result.mstr.ev > 0);
+});
+
 test('BMNR remains independently usable only when API supplies eth_price', () => {
   const parsed = parseMnavPayload({
     bmnr: { shares: 100, eth_holdings: 10, stock_price: 20 },

@@ -550,18 +550,33 @@ function renderMnav() {
   }
   state.mnavDerived = derived;
   if (derived.mstr) {
-    applyMnavCard('mstr-mnav', derived.mstr.ev, () => {
+    const officialMnav = finitePositive(derived.mstr.officialMnav) ? derived.mstr.officialMnav : null;
+    const headline = officialMnav ?? (derived.mstr.legacy ? derived.mstr.ev : null);
+    applyMnavCard('mstr-mnav', headline, () => {
       if ($('mstr-basic')) $('mstr-basic').textContent = finitePositive(derived.mstr.basic) ? `${derived.mstr.basic.toFixed(2)}x` : '--';
       if ($('mstr-ev')) $('mstr-ev').textContent = derived.mstr.ev == null ? '--' : `${derived.mstr.ev.toFixed(2)}x`;
-      if ($('mstr-detail')) $('mstr-detail').textContent = `BTC ${derived.mstr.holdings.toLocaleString()} | $${derived.mstr.stockPrice}`;
+      if ($('mstr-detail')) {
+        if (officialMnav != null) {
+          const asOf = sourceDateText(derived.mstr.officialMnavAsOf ?? derived.mstr.sourceAsOf);
+          $('mstr-detail').textContent = `${asOf} · ${derived.mstr.source || '官方 reported'}`;
+        } else if (derived.mstr.holdings != null && derived.mstr.stockPrice != null) {
+          $('mstr-detail').textContent = `历史 EV/BTC 对照 · BTC ${derived.mstr.holdings.toLocaleString()} | $${derived.mstr.stockPrice}`;
+        } else {
+          $('mstr-detail').textContent = '官方 mNAV 不可用：缺少 source_as_of';
+        }
+      }
     });
     if ($('mstr-basic')) $('mstr-basic').textContent = finitePositive(derived.mstr.basic) ? `${derived.mstr.basic.toFixed(2)}x` : '--';
     if ($('mstr-ev')) $('mstr-ev').textContent = derived.mstr.ev == null ? '--' : `${derived.mstr.ev.toFixed(2)}x`;
-    if ($('mstr-detail')) $('mstr-detail').textContent = `BTC ${derived.mstr.holdings.toLocaleString()} | $${derived.mstr.stockPrice}`;
+    if ($('mstr-mnav-title')) $('mstr-mnav-title').textContent = officialMnav != null
+      ? '官方 mNAV · Price / Net BTC Per Share'
+      : '历史 EV/BTC 对照 · 非官方 mNAV';
+    if ($('mstr-detail') && officialMnav != null) $('mstr-detail').textContent = `${sourceDateText(derived.mstr.officialMnavAsOf ?? derived.mstr.sourceAsOf)} · ${derived.mstr.source || '官方 reported'}`;
     setMnavStatus('mstr', mstrEntry?.cached ? 'cached' : 'available', mstrEntry.meta);
   } else {
     if ($('mstr-mnav')) $('mstr-mnav').textContent = '--';
-    if ($('mstr-detail')) $('mstr-detail').textContent = '数据不可用：缺少有效 BTC 价格或完整 MSTR 字段';
+    if ($('mstr-mnav-title')) $('mstr-mnav-title').textContent = '官方 mNAV · Price / Net BTC Per Share';
+    if ($('mstr-detail')) $('mstr-detail').textContent = '数据不可用：缺少官方 mNAV 与有效 source_as_of';
     setMnavStatus('mstr', mstrEntry ? 'stale' : 'unavailable', mstrEntry?.meta || { error: '缺少有效 MSTR 数据' });
   }
   if (derived.bmnr) {
@@ -621,7 +636,7 @@ function validCandleCache(value) {
 }
 
 function validMstrInput(value) {
-  return Boolean(value && typeof value === 'object' && finitePositive(value.holdings) && finitePositive(value.stockPrice) && finitePositive(value.shares) && [value.debt, value.pref, value.cash].every(item => item == null || finite(item)));
+  return isValidMnavValue({ mstr: value });
 }
 
 function validBmnrInput(value) {
@@ -822,7 +837,7 @@ function restoreCache() {
   const legacyMstr = readCached('mstr-mnav', TTL['mstr-mnav']);
   const legacyBmnr = readCached('bmnr-mnav', TTL['bmnr-mnav']);
   if (!state.mnavCompanies.mstr && legacyMstr?.value && validLegacyMstr(legacyMstr.value)) {
-    state.mnavCompanies.mstr = { kind: 'derived', value: { basic: finitePositive(legacyMstr.value.basic) ? legacyMstr.value.basic : null, ev: finitePositive(legacyMstr.value.ev) ? legacyMstr.value.ev : finitePositive(legacyMstr.value.mnav) ? legacyMstr.value.mnav : null, holdings: legacyMstr.value.holdings, stockPrice: legacyMstr.value.price }, meta: { fetchedAt: legacyMstr.fetchedAt, dataAt: legacyMstr.dataAt, source: legacyMstr.source }, fresh: legacyMstr.fresh, cached: true };
+    state.mnavCompanies.mstr = { kind: 'derived', value: { legacy: true, basic: finitePositive(legacyMstr.value.basic) ? legacyMstr.value.basic : null, ev: finitePositive(legacyMstr.value.ev) ? legacyMstr.value.ev : finitePositive(legacyMstr.value.mnav) ? legacyMstr.value.mnav : null, holdings: legacyMstr.value.holdings, stockPrice: legacyMstr.value.price }, meta: { fetchedAt: legacyMstr.fetchedAt, dataAt: legacyMstr.dataAt, source: legacyMstr.source }, fresh: legacyMstr.fresh, cached: true };
   }
   if (!state.mnavCompanies.bmnr && legacyBmnr?.value && validLegacyBmnr(legacyBmnr.value)) {
     state.mnavCompanies.bmnr = { kind: 'derived', value: { mnav: legacyBmnr.value.mnav, holdings: legacyBmnr.value.eth, stockPrice: legacyBmnr.value.price }, meta: { fetchedAt: legacyBmnr.fetchedAt, dataAt: legacyBmnr.dataAt, source: legacyBmnr.source }, fresh: legacyBmnr.fresh, cached: true };

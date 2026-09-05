@@ -1,0 +1,4 @@
+- [x] Adapt and validate the official contract and structured provenance.
+- [x] Label official and legacy MSTR ratios distinctly.
+- [x] Verify unit and browser scenarios including official-only and BMNR isolation.
+- [ ] Publish the adapter after the repaired producer is available and verify production.

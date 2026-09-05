@@ -63,8 +63,16 @@ function fixtureData(input, scenario) {
   if (hostname === 'strc-issuance.pages.dev') return { parsed: { strc: { atm_remaining_m: 17511 } } };
   if (pathname.includes('/mnav')) return {
     eth_price: 2500,
-    ...(scenario === 'bmnr-isolated' ? { mstr: { stock_price: 150 }, bmnr: { eth_holdings: 1920000, stock_price: 40, shares: 200000000, cash: 100000000 } } : {
-      mstr: { btc_holdings: 845050, stock_price: 150, shares: 450000000, debt: 6710000000, pref: 14800000000, cash: 5100000000 },
+    ...(scenario === 'mstr-official-only' ? {
+      mstr: {
+        official_mnav: 1.15,
+        official_mnav_as_of: '2026-09-04',
+        source_as_of: { home: '2026-09-04', shares: '2026-08-30', ledger: '2026-08-31', notes: '2026-09-04' },
+        source: 'strategy.com'
+      },
+      bmnr: { eth_holdings: 1920000, stock_price: 40, shares: 200000000 }
+    } : scenario === 'bmnr-isolated' ? { mstr: { stock_price: 150 }, bmnr: { eth_holdings: 1920000, stock_price: 40, shares: 200000000, cash: 100000000 } } : {
+      mstr: { btc_holdings: 845050, stock_price: 150, shares: 450000000, debt: 6710000000, pref: 14800000000, cash: 5100000000, official_mnav: 1.15, official_mnav_as_of: '2026-09-04', source_as_of: { home: '2026-09-04', shares: '2026-08-30', ledger: '2026-08-31', notes: '2026-09-04' }, source: 'strategy.com' },
       bmnr: { eth_holdings: 1920000, stock_price: 40, shares: 200000000 },
     }),
   };
@@ -279,6 +287,8 @@ async function runScenario(browser, root, name, options = {}) {
       check(/\$100,000|100000/.test(await textOf('#btc-price')), 'poisoned cache does not block normal price');
       check(/[0-9.]+/.test(await textOf('#bp-ratio')), 'poisoned cache does not block derived BP ratio');
       check(/[0-9.]+x/.test(await textOf('#mstr-mnav')), 'poisoned mNAV cache does not replace valid network mNAV');
+      check((await textOf('#mstr-mnav-title')).includes('官方 mNAV'), 'MSTR headline uses official reported mNAV label');
+      check((await textOf('#mstr-detail')).includes('源'), 'MSTR official mNAV keeps source date detail');
       check(/97\.33/.test(await textOf('#strc-price')), 'poisoned STRC cache does not replace valid network STRC');
       const poisonedText = await body();
       check(!/oops|NaN|Infinity/.test(poisonedText), 'poisoned cache leaves no oops/NaN/Infinity text');
@@ -306,6 +316,14 @@ async function runScenario(browser, root, name, options = {}) {
       check(/[0-9.]+x/.test(await textOf('#mstr-mnav')), 'legacy MSTR mNAV remains visible when fresh mNAV source fails');
       const legacyRecord = await page.evaluate(() => JSON.parse(localStorage.getItem('btc_mstr-mnav')));
       check(legacyRecord.t === options.expectedCacheTimestamp, 'legacy MSTR cache timestamp is preserved');
+    }
+
+    if (name === 'mstr-official-only') {
+      await page.waitForFunction(() => document.querySelector('#mstr-mnav')?.textContent?.trim() === '1.15x', null, { timeout: 2500 });
+      check((await textOf('#mstr-mnav')) === '1.15x', 'official MSTR mNAV renders without BTC/share inputs');
+      check((await textOf('#mstr-mnav-title')).includes('官方 mNAV'), 'official-only MSTR record keeps official headline label');
+      check((await textOf('#mstr-detail')).includes('源'), 'official-only MSTR record keeps independent source date');
+      check((await textOf('#mstr-basic')) === '--', 'official-only MSTR record does not invent Basic comparison');
     }
 
   if (name === 'price-fast-hash-hung') {
@@ -572,6 +590,7 @@ try {
       expectedCacheTimestamp: timestamp,
       rawCache: { 'mstr-mnav': JSON.stringify({ t: timestamp, v: { basic: 1.08, ev: 1.12, holdings: 845050, price: 150 } }) },
     }; })()],
+    ['mstr-official-only', undefined],
     ['expired-cache', (() => { const timestamp = Date.now() - 172800001; return { expectedCacheTimestamp: timestamp, rawCache: { price: JSON.stringify({ t: timestamp, v: { price: 65000, changePct: -2 } }) } }; })()],
     ['bad-cache', { rawCache: { price: '{"broken":' } }],
     ['all-failed', undefined],

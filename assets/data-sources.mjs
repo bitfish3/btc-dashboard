@@ -52,7 +52,7 @@ function timestamp(value) {
 function explicitSourceDate(...objects) {
   for (const object of objects) {
     if (!object || typeof object !== 'object') continue;
-    for (const key of ['data_as_of', 'dataAt', 'mvrvz_date']) {
+    for (const key of ['source_as_of', 'official_mnav_as_of', 'mnav_as_of', 'data_as_of', 'dataAt', 'mvrvz_date']) {
       const value = timestamp(object[key]);
       if (value != null) return value;
     }
@@ -63,7 +63,7 @@ function explicitSourceDate(...objects) {
 export function sourceDate(...objects) {
   for (const object of objects) {
     if (!object || typeof object !== 'object') continue;
-    for (const key of ['data_as_of', 'dataAt', 'timestamp', 'ts', 'time', 'updated_at']) {
+    for (const key of ['source_as_of', 'official_mnav_as_of', 'mnav_as_of', 'data_as_of', 'dataAt', 'timestamp', 'ts', 'time', 'updated_at']) {
       const value = timestamp(object[key]);
       if (value != null) return value;
     }
@@ -222,10 +222,21 @@ function parseMstr(object) {
   const holdings = positive(companyField(object, 'btc_holdings', 'btcHoldings'));
   const stockPrice = positive(companyField(object, 'stock_price', 'stockPrice'));
   const shares = positive(object.shares);
-  if (holdings == null || stockPrice == null || shares == null) return null;
+  const officialMnav = positive(companyField(object, 'official_mnav', 'officialMnav'));
+  const officialMnavAsOf = timestamp(companyField(object, 'official_mnav_as_of', 'officialMnavAsOf', 'mnav_as_of'));
+  // source_as_of is a structured provenance object on the Worker contract
+  // ({home, shares, ledger, notes}); preserve it verbatim.  The headline date
+  // comes only from official_mnav_as_of.
+  const sourceAsOf = companyField(object, 'source_as_of', 'sourceAsOf') ?? null;
+  const basicShares = positive(companyField(object, 'basic_shares', 'basicShares'));
+  const assumedDilutedShares = positive(companyField(object, 'assumed_diluted_shares', 'assumedDilutedShares'));
+  const fullyDilutedShares = positive(companyField(object, 'fully_diluted_shares', 'fullyDilutedShares'));
+  const hasLegacy = holdings != null && stockPrice != null && shares != null;
+  if (!hasLegacy && officialMnav == null) return null;
   const debt = number(object.debt);
   const pref = number(object.pref ?? object.preferred);
   const cash = number(object.cash);
+  if (![debt, pref, cash].every(validOptionalNumber)) return null;
   return {
     holdings,
     stockPrice,
@@ -233,6 +244,13 @@ function parseMstr(object) {
     debt,
     pref,
     cash,
+    officialMnav,
+    officialMnavAsOf,
+    sourceAsOf,
+    source: typeof object.source === 'string' && object.source.trim() ? object.source : null,
+    basicShares,
+    assumedDilutedShares,
+    fullyDilutedShares,
     dataAt: sourceDate(object)
   };
 }
@@ -263,7 +281,15 @@ export function isValidMnavValue(value) {
   let validCompany = false;
   if (value.mstr != null) {
     const m = value.mstr;
-    if (!m || typeof m !== 'object' || ![m.holdings, m.stockPrice, m.shares].every(v => NUMBER(v) && v > 0) || ![m.debt, m.pref, m.cash].every(validOptionalNumber)) return false;
+    if (!m || typeof m !== 'object') return false;
+    const hasOfficial = NUMBER(m.officialMnav) && m.officialMnav > 0;
+    const hasLegacy = [m.holdings, m.stockPrice, m.shares].every(v => NUMBER(v) && v > 0);
+    if (!hasOfficial && !hasLegacy) return false;
+    if (m.officialMnav != null && (!NUMBER(m.officialMnav) || m.officialMnav <= 0)) return false;
+    if (m.officialMnavAsOf != null && (!NUMBER(m.officialMnavAsOf) || m.officialMnavAsOf <= 0)) return false;
+    if (![m.holdings, m.stockPrice, m.shares].every(validOptionalNumber)) return false;
+    if (![m.basicShares, m.assumedDilutedShares, m.fullyDilutedShares].every(v => v == null || (NUMBER(v) && v > 0))) return false;
+    if (![m.debt, m.pref, m.cash].every(validOptionalNumber)) return false;
     validCompany = true;
   }
   if (value.bmnr != null) {
@@ -276,21 +302,33 @@ export function isValidMnavValue(value) {
 
 export function deriveMnav(data, btcPrice) {
   const result = { mstr: null, bmnr: null };
-  if (data?.mstr && positive(btcPrice)) {
+  if (data?.mstr) {
     const m = data.mstr;
-    const btcValue = m.holdings * btcPrice;
-    const marketCap = m.stockPrice * m.shares;
-    const basic = marketCap / btcValue;
-    const ev = [m.debt, m.pref, m.cash].every(v => v != null)
-      ? (marketCap + m.debt + m.pref - m.cash) / btcValue
+    const official = NUMBER(m.officialMnav) && m.officialMnav > 0 ? {
+      officialMnav: m.officialMnav,
+      officialMnavAsOf: m.officialMnavAsOf ?? null,
+      sourceAsOf: m.sourceAsOf ?? m.dataAt ?? null,
+      source: m.source ?? 'mnav'
+    } : null;
+    const legacy = positive(btcPrice) && positive(m.holdings) && positive(m.stockPrice) && positive(m.shares)
+      ? (() => {
+        const btcValue = m.holdings * btcPrice;
+        const marketCap = m.stockPrice * m.shares;
+        const basic = marketCap / btcValue;
+        const ev = [m.debt, m.pref, m.cash].every(v => v != null)
+          ? (marketCap + m.debt + m.pref - m.cash) / btcValue
+          : null;
+        return NUMBER(basic) && basic > 0 ? {
+          basic,
+          ev: NUMBER(ev) && ev > 0 ? ev : null,
+          holdings: m.holdings,
+          stockPrice: m.stockPrice,
+          legacy: true
+        } : null;
+      })()
       : null;
-    if (NUMBER(basic) && basic > 0) {
-      result.mstr = {
-        basic,
-        ev: NUMBER(ev) && ev > 0 ? ev : null,
-        holdings: m.holdings,
-        stockPrice: m.stockPrice
-      };
+    if (official || legacy) {
+      result.mstr = { ...(official || {}), ...(legacy || {}) };
     }
   }
   if (data?.bmnr && positive(data.ethPrice)) {

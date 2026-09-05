@@ -167,7 +167,7 @@ export function createCycleTargets(root = null) {
       if (body) body.replaceChildren();
       return result;
     }
-    setText('[data-target-current-price]', result.quote == null ? '不可用' : formatUsd(result.quote, 0));
+    setText('[data-target-current-price]', result.quote == null ? '不可用' : `$${Math.round(result.quote).toLocaleString('en-US')}`);
     setText('[data-target-current-cap]', result.current ? formatUsd(result.current.capitalization) : '不可用');
     setText('[data-target-manual-cap]', formatUsd(result.manualTarget.capitalization));
     setText('[data-target-manual-share]', formatPercent(result.manualTarget.share));

@@ -12,4 +12,6 @@
 ## 3. Delivery
 
 - [x] 3.1 Run existing and new checks, verify OpenSpec scenarios and record assumptions/evidence in handoff.
-- [ ] 3.2 Commit the verified change and publish through the existing Pages pipeline, then read back production results.
+- [x] 3.2 Commit the verified change and publish through the existing Pages pipeline, then read back production results.
+
+Published as f290a67; Pages deployment 02be8f06-5984-4679-b2d3-24f730683422. Both production domains passed real-browser quote/input checks with no page errors. Module files match local hashes; HTML differences are existing Cloudflare analytics/challenge injections.
