@@ -11,15 +11,15 @@
 
 ## 3. Data and presentation
 
-- [ ] 3.1 Extract data-source adapters with validated schemas, full candle counts and independent STRC sources.
-- [ ] 3.2 Extract dashboard controller, preserve weekly constants, and replace scattered timers with task registry.
-- [ ] 3.3 Restore all valid caches and add visible per-area loading/cache/stale/unavailable state.
-- [ ] 3.4 Recompute derived metrics on validated dependency changes; remove fabricated fallback values and apply evidence coverage gate.
-- [ ] 3.5 Resolve reproduced UI/accessibility issues within scope and verify responsive layout and slider performance.
+- [x] 3.1 Extract data-source adapters with validated schemas, full candle counts and independent STRC sources.
+- [x] 3.2 Extract dashboard controller, preserve weekly constants, and replace scattered timers with task registry.
+- [x] 3.3 Restore all valid caches and add visible per-area loading/cache/stale/unavailable state.
+- [x] 3.4 Recompute derived metrics on validated dependency changes; remove fabricated fallback values and apply evidence coverage gate.
+- [x] 3.5 Resolve reproduced UI/accessibility issues within scope and verify responsive layout and slider performance.
 
 ## 4. Verification and delivery
 
-- [ ] 4.1 Provide reproducible test/source-check scripts and weekly regex contract check; run all required checks.
-- [ ] 4.2 Perform controlled browser failure/recovery tests and live-source local regression; record performance boundaries and evidence.
-- [ ] 4.3 Verify all OpenSpec requirements/scenarios and deliver self-contained handoff with release/rollback instructions.
-- [ ] 4.4 Verify original hashes unchanged and create local atomic commits; present completed result for publishing authorization.
+- [x] 4.1 Provide reproducible test/source-check scripts and weekly regex contract check; run all required checks.
+- [x] 4.2 Perform controlled browser failure/recovery tests and live-source local regression; record performance boundaries and evidence.
+- [x] 4.3 Verify all OpenSpec requirements/scenarios and deliver self-contained handoff with release/rollback instructions.
+- [x] 4.4 Verify original hashes unchanged and create local atomic commits; present completed result for publishing authorization.

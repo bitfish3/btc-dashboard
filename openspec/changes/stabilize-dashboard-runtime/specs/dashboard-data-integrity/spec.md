@@ -22,6 +22,10 @@ Price SHALL render without hashrate, and STRC flywheel and issuance SHALL retain
 - **WHEN** flywheel data succeeds while issuance fails or remains pending
 - **THEN** flywheel data is displayed immediately and previous issuance data is preserved with its own state.
 
+#### Scenario: mNAV response contains only one usable company
+- **WHEN** a refresh contains a valid BMNR record but no usable MSTR record
+- **THEN** BMNR refreshes independently, MSTR retains any unexpired last-good snapshot with its own original timestamp and cached label, and BMNR does not depend on BTC quote availability.
+
 ### Requirement: Derived values follow validated dependencies
 ahr999, price ratios, VWAP ratios, MSTR mNAV and the cycle composite SHALL recalculate when valid dependencies change. Missing prices SHALL NOT be replaced by fabricated defaults.
 

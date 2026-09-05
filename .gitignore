@@ -1,4 +1,8 @@
 .gstack/
+node_modules/
+docs/qa/
+docs/HANDOFF.md
+docs/VERIFICATION.md
 .wrangler/
 scripts/__pycache__/
 scripts/*.log

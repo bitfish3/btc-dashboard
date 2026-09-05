@@ -29,11 +29,13 @@
 
 3. **缓存有验证器，内存独立于持久化。** `createStore({storage, now, validators})` 提供 `get(key,maxAgeMs)`、`getRecord(key)`、`set(key,value,{dataAt,source})`、`subscribe(listener)`。兼容原 `btc_*` 的 `{t,v}` 格式。拒绝坏数值、坏结构、未来时间戳；storage 抛错时内存照常更新。`t` 是获取时间，`dataAt` 是上游数据日期；UI 不把获取成功声称为源数据已更新。失败不改 last-good 的时间戳。
 
-4. **数据任务统一注册、单任务仅一个请求批次。** `createScheduler({tasks,now,setTimer,clearTimer,isActive,onStatus})` 提供 `start/stop/refreshDue/run/getState`；task 是 `{key,run,intervalMs,initialDelayMs}`。隐藏/离线时不发新请求，返回前台或在线时仅启动到期任务；失败退避，从 5 秒开始，最多 2 分钟且不超过原周期。价格 15 秒，算力 5 分钟，日/周 K 线 5 分钟，F&G/减半 10 分钟，MVRV-Z/STRC/概率 30 分钟，其余链上/mNAV 1 小时。所有链上指标都有周期任务；首轮可用任务最迟 500ms 启动，取消固定 2s/4s/5.5s 依赖等待。
+4. **数据任务统一注册、单任务仅一个请求批次。** `createScheduler({tasks,now,setTimer,clearTimer,isActive,onStatus})` 提供 `start/stop/refreshDue/run/getState`；task 是 `{key,run,intervalMs,initialDelayMs}`。隐藏/离线时不发新请求，返回前台或在线时仅启动到期任务；失败退避，从 5 秒开始，最多 2 分钟且不超过原周期。价格 15 秒，算力 5 分钟，日/周 K 线 5 分钟，F&G/减半 10 分钟，MVRV-Z/STRC/概率/mNAV 30 分钟，其余链上 1 小时。mNAV 改为 30 分钟，是为了与已有 30 分钟有效期对齐，避免健康来源也有半小时必然过期。所有链上指标都有周期任务；首轮可用任务最迟 500ms 启动，取消固定 2s/4s/5.5s 依赖等待。
 
 5. **每个数据源独立成功、独立降级。** STRC 飞轮与发行量是两个任务/缓存，快源先呈现；无数据不写 null 覆盖好缓存。价格更新主动重算 ahr999、200WMA/BP 比率、VWAP 倍数、mNAV 与钟摆，mNAV API 与 BTC 报价并发获取。矿机更新在一帧内合并，慢算力不会阻塞价格/锚点呈现。
 
 6. **未知数据不合成确定结论。** PSIP 当前没有经过确认的百分比字段，页面显示暂无可靠数据，并从钟摆排除。MSTR 不能用 65000 默认价兜底；缺少价格或公司参数时显示不可用。钟摆只有有效指标权重覆盖至少 60% 且至少三项时才显示综合判断，否则展示覆盖信息与数据不足。模型阈值沿用基线，覆盖阈值是质量门槛，不是投资模型校准。
+
+   缓存展示与计算有效期分开：价格 last-good 可显示 24 小时并标记缓存，但超过 5 分钟不进入新的派生计算；链上/K线/难度有效期 24 小时，F&G 2 小时，mNAV 30 分钟。每次计算重新检查年龄，不能只在启动时判断一次。读取或呈现缓存不得改写其获取时间。
 
 7. **可验证目标。** Mock 浏览器环境下，缓存卡片首轮渲染不等待网络；价格 50ms、算力挂起时，价格应在 1s 内可见；快 STRC 在慢发行源未结束前出现；滑块变化 100ms 内更新；任意单源失败不能抛出未处理错误或覆盖好缓存。实际线上耗时受外部 API、网络与 Cloudflare POP 影响，报告只对实测样本负责。
 
