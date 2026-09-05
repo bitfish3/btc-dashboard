@@ -61,6 +61,7 @@ function fixtureData(input, scenario) {
     global_runway: { runway_months: 35.4, status: 'healthy', debt_interest_rate: 0.01, cash: 5100000000, annual_cash_need: 1730000000, headroom_to_9m: 3802500000, headroom_to_6m: 4235000000 },
   };
   if (hostname === 'strc-issuance.pages.dev') return { parsed: { strc: { atm_remaining_m: 17511 } } };
+  if (hostname === 'mstr.fuckbtc.com') return { issuance: { parsed: { strc: { atm_remaining_m: 17511 } }, ts: '2026-08-31T12:00:00Z' } };
   if (pathname.includes('/mnav')) return {
     eth_price: 2500,
     ...(scenario === 'mstr-official-only' ? {
@@ -85,7 +86,7 @@ function externalKind(input) {
   const { hostname, pathname } = url;
   if (pathname.includes('mining/hashrate')) return 'hashrate';
   if (hostname === 'flywheel-monitor.pages.dev') return 'strc-fast';
-  if (hostname === 'strc-issuance.pages.dev') return 'strc-issuance';
+  if (hostname === 'strc-issuance.pages.dev' || hostname === 'mstr.fuckbtc.com') return 'strc-issuance';
   if (pathname.includes('/mnav')) return 'mnav';
   if (pathname.includes('balancedPrice')) return 'bp';
   if (pathname.includes('mCapRealizedRatio')) return 'mvrv';

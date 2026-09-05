@@ -9,6 +9,7 @@ import {
   isValidMnavValue,
   parseBinanceCandles,
   parseHalvingHeight,
+  parseIssuancePayload,
   parseMnavPayload,
   parseMvrvzPayload,
   parseOkxCandles,
@@ -19,6 +20,12 @@ import {
 function candles(count = 200, close = 100) {
   return Array.from({ length: count }, (_, index) => [Date.now() - (count - index) * 86400000, '0', '0', '0', String(close + index), '0']);
 }
+
+test('nested public MSTR snapshot preserves the issuance disclosure clock', () => {
+  const result = parseIssuancePayload({ ts: '2026-09-05T06:00:00Z', issuance: { ts: '2026-08-31T12:17:21Z', parsed: { strc: { atm_remaining_m: 17510.8 } } } });
+  assert.equal(result.value.atmRemainingM, 17510.8);
+  assert.equal(result.dataAt, Date.parse('2026-08-31T12:17:21Z'));
+});
 
 test('historical adapters reject short and invalid close series before averaging', () => {
   assert.throws(() => parseBinanceCandles(candles(199)), /200 candles/);

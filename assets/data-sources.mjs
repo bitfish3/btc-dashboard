@@ -20,7 +20,7 @@ const API = Object.freeze({
   height: 'https://mempool.space/api/blocks/tip/height',
   probabilities: 'https://probs.fuckbtc.com/api/data',
   strcFlywheel: 'https://flywheel-monitor.pages.dev/snapshot.json',
-  strcIssuance: 'https://strc-issuance.pages.dev/snapshot.json'
+  strcIssuance: 'https://mstr.fuckbtc.com/snapshot.json'
 });
 
 const NUMBER = Number.isFinite;
@@ -420,9 +420,10 @@ export function isValidFlywheelValue(value) {
 }
 
 export function parseIssuancePayload(payload) {
-  const amount = number(payload?.parsed?.strc?.atm_remaining_m);
+  const issuance = payload?.issuance ?? payload;
+  const amount = number(issuance?.parsed?.strc?.atm_remaining_m);
   if (amount == null || amount < 0) invalid('invalid STRC issuance response');
-  return record({ atmRemainingM: amount }, 'strc-issuance', sourceDate(payload));
+  return record({ atmRemainingM: amount }, 'strc-issuance', sourceDate(issuance));
 }
 
 export function isValidIssuanceValue(value) {
