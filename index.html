@@ -441,11 +441,13 @@
     .pend-breakdown { gap: 5px; }
     .pend-chip { padding: 3px 6px; border: 1px solid var(--border); border-radius: 3px; background: transparent; color: var(--dim); font-size: 13px; }
     .pend-zone-scale, .gauge-labels { font-size: 13px; }
-    .fng-section { padding: 20px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 16px; }
+    .fng-section { padding: 20px; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "gauge" "info" "status"; align-content: center; align-items: start; gap: 16px; }
+    .fng-section > .gauge-container { grid-area: gauge; }
+    .fng-section > .dashboard-state { grid-area: status; min-width: 0; overflow-wrap: anywhere; }
     .gauge-container { width: 140px; }
     .gauge-center { background: var(--card); }
     .gauge-needle, .gauge-needle::after { background: var(--text); box-shadow: none; }
-    .fng-info { width: 100%; }
+    .fng-info { grid-area: info; width: 100%; min-width: 0; }
     .fng-title { margin-bottom: 5px; }
     .fng-status { margin: 0 0 5px; font-size: 24px; font-weight: 800; }
     .fng-desc { color: var(--dim); font-size: 13px; }
@@ -553,7 +555,7 @@
       .workspace-section { scroll-margin-top: 110px; }
       .overview-grid, .risk-grid { grid-template-columns: minmax(0, 1fr); }
       .target-grid { grid-template-columns: minmax(0, 1fr); }
-      .fng-section { flex-direction: row; align-items: center; }
+      .fng-section { grid-template-columns: 140px minmax(0, 1fr); grid-template-areas: "gauge info" "status status"; align-items: center; }
       .matrix-grid, .anchor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .anchor-vwap { grid-column: span 2; }
       .assumption-strip { grid-template-columns: auto minmax(180px, 1fr) auto auto; }
@@ -608,7 +610,7 @@
       .anchor-vwap { grid-column: auto; }
       .pend-gauge { width: 254px; max-width: 100%; height: 176px; transform: scale(.9); transform-origin: left top; margin: 0; }
       .pend-gauge svg { width: 100%; height: auto; }
-      .fng-section { flex-direction: column; align-items: flex-start; }
+      .fng-section { grid-template-columns: minmax(0, 1fr); grid-template-areas: "gauge" "info" "status"; align-items: start; }
     }
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }

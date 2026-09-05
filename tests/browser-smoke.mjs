@@ -424,11 +424,23 @@ async function runResponsive(browser, root) {
     await route.fulfill(jsonResponse(fixtureData(url, 'responsive')));
     });
     const samples = [];
-    for (const viewport of [{ width: 1280, height: 720 }, { width: 768, height: 1024 }, { width: 375, height: 812 }]) {
+    for (const viewport of [{ width: 1280, height: 720 }, { width: 768, height: 1024 }, { width: 414, height: 896 }, { width: 390, height: 844 }, { width: 375, height: 812 }, { width: 320, height: 740 }]) {
     await page.setViewportSize(viewport);
     await page.goto(`${origin}/index.html`, { waitUntil: 'domcontentloaded' });
     await sleep(250);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    const sentiment = await page.locator('.fng-section').evaluate(card => {
+      const info = card.querySelector('.fng-info').getBoundingClientRect();
+      const gauge = card.querySelector('.gauge-container').getBoundingClientRect();
+      const status = card.querySelector('.dashboard-state').getBoundingClientRect();
+      return { textWidth: info.width, statusTop: status.top, contentBottom: Math.max(info.bottom, gauge.bottom) };
+    });
+    assert.ok(sentiment.textWidth >= 120, `${viewport.width}px sentiment text compressed to ${sentiment.textWidth}px`);
+    assert.ok(sentiment.statusTop >= sentiment.contentBottom, `${viewport.width}px sentiment source overlaps its content`);
+    if (viewport.width === 390 || viewport.width === 375) {
+      await page.locator('.fng-section').evaluate(card => card.scrollIntoView({ block: 'center' }));
+      await page.locator('.fng-section').screenshot({ path: join(evidenceRoot, `screenshots/sentiment-mobile-${viewport.width}.png`) });
+    }
     const slider = page.locator('#electricity');
     const before = await slider.inputValue();
     const p50Before = await page.locator('#p50-val').innerText();
@@ -442,7 +454,7 @@ async function runResponsive(browser, root) {
     const changedMs = Date.now() - changedAt;
     assert.ok(overflow <= 1, `${viewport.width}px has horizontal overflow ${overflow}px`);
     assert.ok(changedMs <= 100, `${viewport.width}px slider took ${changedMs}ms`);
-    samples.push({ viewport, overflow, sliderChangedMs: changedMs });
+    samples.push({ viewport, overflow, sliderChangedMs: changedMs, sentiment });
     if (viewport.width === 375) await page.screenshot({ path: join(evidenceRoot, 'screenshots/responsive-mobile-375.png'), fullPage: false });
     }
     return samples;
