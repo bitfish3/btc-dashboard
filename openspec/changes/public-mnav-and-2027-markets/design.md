@@ -2,6 +2,8 @@
 
 Provider diagnostics stay inside collectors and caches. HTTP serialization uses a public projection; Pages snapshots convert field provenance into date-only freshness metadata so cached fields retain their original clocks. No query parameter can enable internal diagnostics.
 
+The homepage reuses its existing `mstr.fuckbtc.com/snapshot.json` request for optional official MSTR mNAV as well as issuance. These fields normalize independently. Rendering selects a current official API entry first when its disclosure date is at least as recent, otherwise uses a validated snapshot, otherwise retains the existing legacy/unavailable behavior. BMNR's API request and cache remain independent. Snapshot and disclosure dates are capped at seven days with one minute of clock skew; the thirty-minute local fetch cache retains its original time on restore. No provider diagnostics are added to the page.
+
 2027 data comes from the individual markets `will-bitcoin-hit-100k-by-december-31-2027` and `will-bitcoin-hit-150k-by-december-31-2027`. Their market end time is 2028-01-01 05:00 UTC, corresponding to the end of 2027 in US Eastern time. Event-level dates are not used. The outcome is a touch by that deadline from the contract's starting window, not a year-end close. Yes-index, question, status, date and numeric ranges must validate.
 
 Prediction data uses a separate KV key, ten-minute freshness and a one-day maximum fallback. Requests and response bodies share a five-second deadline; failures preserve original times and cannot block the 2026 dashboard. The main dashboard uses its existing scheduler and keeps this read-only row separate from its one editable allocation input.

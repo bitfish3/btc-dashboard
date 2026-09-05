@@ -6,6 +6,8 @@ import {
   deriveMnav,
   average,
   isValidFlywheelValue,
+  isCurrentMstrSnapshot,
+  isValidIssuanceValue,
   isValidMnavValue,
   parseBinanceCandles,
   parseHalvingHeight,
@@ -22,6 +24,19 @@ function candles(count = 200, close = 100) {
   return Array.from({ length: count }, (_, index) => [Date.now() - (count - index) * 86400000, '0', '0', '0', String(close + index), '0']);
 }
 
+const DAY = 86400000;
+const MINUTE = 60000;
+
+function usDateAt(time) {
+  const date = new Date(time);
+  return `${date.getUTCMonth() + 1}/${date.getUTCDate()}/${date.getUTCFullYear()}`;
+}
+
+function utcDateAt(time) {
+  const date = new Date(time);
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
 test('2027 forecast rejects wrong-year, wrong-semantics and invalid probabilities', () => {
   const payload = { year: 2027, semantics: 'touch_by_2027_end', status: 'fresh', fetchedAt: new Date().toISOString(), markets: [{ threshold: 100000, probability: 0.84, volume: 1000, liquidity: 17000 }] };
   assert.equal(parseForecast2027(payload).value.markets[0].probability, 0.84);
@@ -34,6 +49,107 @@ test('nested public MSTR snapshot preserves the issuance disclosure clock', () =
   const result = parseIssuancePayload({ ts: '2026-09-05T06:00:00Z', issuance: { ts: '2026-08-31T12:17:21Z', parsed: { strc: { atm_remaining_m: 17510.8 } } } });
   assert.equal(result.value.atmRemainingM, 17510.8);
   assert.equal(result.dataAt, Date.parse('2026-08-31T12:17:21Z'));
+});
+
+test('MSTR snapshot keeps explicit official mNAV and date while ignoring generic ratios', () => {
+  const now = Date.now();
+  const dataAsOf = usDateAt(now - DAY);
+  const payload = {
+    ts: new Date(now - 5 * MINUTE).toISOString(),
+    mnav: {
+      mnav_official: 1.15,
+      data_as_of: dataAsOf,
+      mnav: 9.99,
+      basic: 8.88,
+      ev: 7.77
+    },
+    issuance: { parsed: { strc: { atm_remaining_m: 17510.8 } } }
+  };
+
+  const result = parseIssuancePayload(payload);
+  assert.deepEqual(result.value.mstrSnapshot, {
+    officialMnav: 1.15,
+    officialMnavAsOf: utcDateAt(now - DAY),
+    snapshotAt: Date.parse(payload.ts)
+  });
+  assert.equal(isValidIssuanceValue(result.value), true);
+});
+
+test('official MSTR snapshot remains a usable fallback when ATM is missing', () => {
+  const now = Date.now();
+  const result = parseIssuancePayload({
+    ts: new Date(now - MINUTE).toISOString(),
+    mnav: { mnav_official: 1.15, data_as_of: usDateAt(now - DAY) }
+  });
+
+  assert.equal(result.value.atmRemainingM, null);
+  assert.equal(result.value.mstrSnapshot.officialMnav, 1.15);
+  assert.equal(isValidIssuanceValue(result.value), true);
+});
+
+test('generic, basic, and EV ratios cannot create an issuance fallback without official mNAV', () => {
+  assert.throws(() => parseIssuancePayload({
+    ts: new Date(Date.now() - MINUTE).toISOString(),
+    mnav: { mnav: 1.15, basic: 1.1, ev: 1.2, data_as_of: usDateAt(Date.now() - DAY) }
+  }), /invalid STRC issuance response/);
+});
+
+test('valid ATM remains intact when the optional snapshot is missing, stale, future, or invalid', () => {
+  const now = Date.now();
+  const atmRemainingM = 4321.25;
+  const cases = [
+    ['missing', {}],
+    ['stale', {
+      ts: new Date(now - 8 * DAY).toISOString(),
+      mnav: { mnav_official: 1.15, data_as_of: usDateAt(now - 8 * DAY) }
+    }],
+    ['future', {
+      ts: new Date(now + 2 * MINUTE).toISOString(),
+      mnav: { mnav_official: 1.15, data_as_of: new Date(now + 2 * MINUTE).toISOString() }
+    }],
+    ['invalid', {
+      ts: new Date(now - MINUTE).toISOString(),
+      mnav: { mnav_official: 'NaN', data_as_of: 'not-a-date', basic: 1.1, ev: 1.2 }
+    }]
+  ];
+
+  for (const [label, snapshot] of cases) {
+    const result = parseIssuancePayload({
+      ...snapshot,
+      issuance: { parsed: { strc: { atm_remaining_m: atmRemainingM } } }
+    });
+    assert.equal(result.value.atmRemainingM, atmRemainingM, label);
+    assert.equal('mstrSnapshot' in result.value, false, label);
+    assert.equal(isValidIssuanceValue(result.value), true, label);
+  }
+});
+
+test('issuance cache validator accepts normalized fallback shapes and rejects toxic snapshots', () => {
+  const now = Date.parse('2030-01-15T12:00:00Z');
+  const snapshot = {
+    officialMnav: 1.15,
+    officialMnavAsOf: now - DAY,
+    snapshotAt: now - MINUTE
+  };
+
+  assert.equal(isValidIssuanceValue({ atmRemainingM: 0 }), true);
+  assert.equal(isValidIssuanceValue({ atmRemainingM: null, mstrSnapshot: snapshot }), true);
+  assert.equal(isValidIssuanceValue({ atmRemainingM: 100, mstrSnapshot: snapshot }), true);
+  assert.equal(isValidIssuanceValue({ atmRemainingM: null }), false);
+  assert.equal(isValidIssuanceValue({ atmRemainingM: 100, mstrSnapshot: { ...snapshot, officialMnav: NaN } }), false);
+});
+
+test('MSTR snapshot freshness uses an injected now and includes the exact seven-day boundary', () => {
+  const now = Date.parse('2030-01-15T12:00:00Z');
+  const atBoundary = {
+    officialMnav: 1.15,
+    officialMnavAsOf: now - 7 * DAY,
+    snapshotAt: now - 7 * DAY
+  };
+  assert.equal(isCurrentMstrSnapshot(atBoundary, now), true);
+  assert.equal(isCurrentMstrSnapshot({ ...atBoundary, snapshotAt: now - 7 * DAY - 1 }, now), false);
+  assert.equal(isCurrentMstrSnapshot({ ...atBoundary, officialMnavAsOf: now + 60000 }, now), true);
+  assert.equal(isCurrentMstrSnapshot({ ...atBoundary, officialMnavAsOf: now + 60001 }, now), false);
 });
 
 test('historical adapters reject short and invalid close series before averaging', () => {

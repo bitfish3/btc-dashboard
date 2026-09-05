@@ -7,6 +7,16 @@ Public mNAV responses and the MSTR page SHALL show business values and dates wit
 - **WHEN** an internal response includes reader/source diagnostics and official mNAV
 - **THEN** the public API preserves mNAV and its date and omits internal diagnostics on both supported routes.
 
+#### Scenario: Homepage mNAV API timeout
+- **WHEN** the mNAV API is slow, fails, or lacks official MSTR data, and the already fetched MSTR snapshot has valid official mNAV
+- **THEN** the homepage renders that official value with its disclosure date without adding a network request or waiting for the API deadline.
+- **AND** BMNR continues independently; an equally or more recently dated official API value takes precedence when it arrives.
+- **AND** missing issuance data does not suppress official mNAV; legacy EV/Basic ratios cannot substitute for official mNAV.
+
+#### Scenario: Snapshot fallback expires
+- **WHEN** the snapshot or its official data date is more than seven days old or in the future, or its local fetch cache exceeds thirty minutes without a successful refresh
+- **THEN** the snapshot cannot supply the headline; restoring it from storage never renews its original cache timestamp.
+
 ### Requirement: Historical and capital data survive refreshes
 The publisher SHALL retain complete historical weekly rows and compute supported capital metrics with explicit, consistent denominators.
 

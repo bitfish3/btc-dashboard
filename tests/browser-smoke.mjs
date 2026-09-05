@@ -65,7 +65,20 @@ function fixtureData(input, scenario) {
     global_runway: { runway_months: 35.4, status: 'healthy', debt_interest_rate: 0.01, cash: 5100000000, annual_cash_need: 1730000000, headroom_to_9m: 3802500000, headroom_to_6m: 4235000000 },
   };
   if (hostname === 'strc-issuance.pages.dev') return { parsed: { strc: { atm_remaining_m: 17511 } } };
-  if (hostname === 'mstr.fuckbtc.com') return { issuance: { parsed: { strc: { atm_remaining_m: 17511 } }, ts: '2026-08-31T12:00:00Z' } };
+  if (hostname === 'mstr.fuckbtc.com') return {
+    ...(scenario !== 'mnav-snapshot-no-atm' ? { issuance: { parsed: { strc: { atm_remaining_m: 17511 } }, ts: '2026-08-31T12:00:00Z' } } : {}),
+    ...(scenario.startsWith('mnav-snapshot-') ? {
+      ts: new Date(Date.now() + (scenario === 'mnav-snapshot-invalid' ? 86400000 : 0)).toISOString(),
+      mnav: { mnav_official: 1.15, data_as_of: new Date(Date.now() - 86400000).toISOString().slice(0, 10) }
+    } : {})
+  };
+  if (pathname.includes('/mnav') && scenario.startsWith('mnav-snapshot-')) return {
+    eth_price: 2500,
+    bmnr: { eth_holdings: 1920000, stock_price: 40, shares: 200000000 },
+    mstr: scenario === 'mnav-snapshot-partial'
+      ? { btc_holdings: 845050, stock_price: 150, shares: 450000000, debt: 6710000000, pref: 14800000000, cash: 5100000000 }
+      : { official_mnav: 1.23, official_mnav_as_of: new Date().toISOString().slice(0, 10) }
+  };
   if (pathname.includes('/mnav')) return {
     eth_price: 2500,
     ...(scenario === 'mstr-official-only' ? {
@@ -172,6 +185,7 @@ async function runScenario(browser, root, name, options = {}) {
       return;
     }
     const kind = externalKind(requestUrl);
+    if (name === 'mnav-snapshot-timeout' && kind === 'mnav' && !externalFailures) return; // Leave the request pending until its client deadline.
     const isolatedBtcFailure = name === 'bmnr-isolated' && (
       kind === 'price' || requestUrl.hostname === 'api.coingecko.com' || requestUrl.hostname === 'blockchain.info'
     );
@@ -184,7 +198,7 @@ async function runScenario(browser, root, name, options = {}) {
       try { await route.abort('timedout'); } catch (_) {}
       return;
     }
-    const legacyMnavFailure = name === 'mnav-failure-keeps-legacy' && kind === 'mnav';
+    const legacyMnavFailure = ['mnav-failure-keeps-legacy', 'mnav-snapshot-no-atm', 'mnav-snapshot-invalid'].includes(name) && kind === 'mnav';
     if (externalFailures || isolatedBtcFailure || legacyMnavFailure || name === 'all-failed') {
       await route.fulfill(jsonResponse({ error: 'synthetic failure' }, 503));
       return;
@@ -196,6 +210,7 @@ async function runScenario(browser, root, name, options = {}) {
     if (name === 'legacy-cache') delay = 900;
     if (name === 'expired-cache' && kind === 'price') delay = 600;
     if (name === 'late-quote-recompute' && kind === 'price') delay = 300;
+    if (['mnav-snapshot-partial', 'mnav-snapshot-newer-api'].includes(name) && kind === 'mnav') delay = 800;
     await sleep(delay);
     await route.fulfill(jsonResponse(fixtureData(requestUrl, name)));
     });
@@ -228,9 +243,46 @@ async function runScenario(browser, root, name, options = {}) {
       result.assertions.push(message);
     };
 
-    if (name === 'expiry-refresh') await page.clock.install({ time: new Date() });
+    if (['expiry-refresh', 'mnav-snapshot-timeout'].includes(name)) await page.clock.install({ time: new Date() });
     await page.goto(`${origin}/index.html`, { waitUntil: 'domcontentloaded' });
     result.timings.domContentLoaded = Date.now() - started;
+
+    if (name.startsWith('mnav-snapshot-')) {
+      if (name === 'mnav-snapshot-invalid') {
+        await page.waitForFunction(() => document.querySelector('#strc-atm')?.textContent?.includes('17.51'), null, { timeout: 2500 });
+        check((await textOf('#mstr-mnav')) === '--', 'future-dated snapshot cannot supply official mNAV');
+      } else {
+        await page.waitForFunction(() => document.querySelector('#mstr-mnav')?.textContent?.trim() === '1.15x', null, { timeout: 700 });
+        result.timings.mnavVisible = Date.now() - started;
+        check((await textOf('#mstr-detail')).includes('数据日期'), 'snapshot mNAV preserves its official data date');
+        if (name === 'mnav-snapshot-no-atm') check((await textOf('#strc-atm')) === '$--', 'missing ATM does not suppress valid official mNAV or fabricate issuance');
+        if (['mnav-snapshot-partial', 'mnav-snapshot-newer-api'].includes(name)) {
+          await page.waitForFunction(() => document.querySelector('#bmnr-mnav')?.textContent?.trim() === '1.67x', null, { timeout: 2500 });
+          const expected = name === 'mnav-snapshot-newer-api' ? '1.23x' : '1.15x';
+          check((await textOf('#mstr-mnav')) === expected, name === 'mnav-snapshot-newer-api'
+            ? 'newer official API data replaces the snapshot while BMNR completes'
+            : 'late legacy MSTR reply does not downgrade official snapshot and BMNR remains independent');
+        }
+        if (name === 'mnav-snapshot-timeout') {
+          await page.clock.fastForward(16000);
+          await sleep(50);
+          check((await textOf('#mstr-mnav')) === '1.15x', 'client mNAV timeout leaves the official snapshot visible');
+          check((await textOf('#bmnr-mnav')) === '--', 'MSTR snapshot cannot fabricate BMNR');
+          const original = await page.evaluate(() => JSON.parse(localStorage.getItem('btc_strc-issuance')));
+          externalFailures = true;
+          await page.reload({ waitUntil: 'domcontentloaded' });
+          await page.waitForFunction(() => document.querySelector('#mstr-mnav')?.textContent?.trim() === '1.15x', null, { timeout: 1000 });
+          await sleep(100);
+          const restored = await page.evaluate(() => JSON.parse(localStorage.getItem('btc_strc-issuance')));
+          check(original.t === restored.t, 'restoring snapshot fallback does not renew its cache timestamp');
+          await page.clock.fastForward(31 * 60000);
+          await sleep(100);
+          check((await textOf('#mstr-mnav')) === '--', 'expired fallback clears after refresh failure');
+        }
+      }
+      check(externalRequests.filter(request => new URL(request.url).hostname === 'mstr.fuckbtc.com').length <= (name === 'mnav-snapshot-timeout' ? 3 : 1), 'official fallback reuses the existing public snapshot request');
+      check(!failures.some(failure => failure.pageerror), 'snapshot fallback creates no unhandled page errors');
+    }
 
     if (name === 'cycle-targets') {
       await page.waitForFunction(() => document.querySelector('[data-target-goal-price]')?.textContent === '22.5 万美元', null, { timeout: 2500 });
@@ -622,6 +674,11 @@ try {
       rawCache: { 'mstr-mnav': JSON.stringify({ t: timestamp, v: { basic: 1.08, ev: 1.12, holdings: 845050, price: 150 } }) },
     }; })()],
     ['mstr-official-only', undefined],
+    ['mnav-snapshot-timeout', undefined],
+    ['mnav-snapshot-partial', undefined],
+    ['mnav-snapshot-newer-api', undefined],
+    ['mnav-snapshot-no-atm', undefined],
+    ['mnav-snapshot-invalid', undefined],
     ['expired-cache', (() => { const timestamp = Date.now() - 172800001; return { expectedCacheTimestamp: timestamp, rawCache: { price: JSON.stringify({ t: timestamp, v: { price: 65000, changePct: -2 } }) } }; })()],
     ['bad-cache', { rawCache: { price: '{"broken":' } }],
     ['all-failed', undefined],

@@ -21,6 +21,7 @@ import {
   fetchWeeklyCandles,
   isValidFlywheelValue,
   isValidIssuanceValue,
+  isCurrentMstrSnapshot,
   isValidMnavValue,
   isValidForecast2027,
   parseFlywheelPayload,
@@ -286,7 +287,21 @@ function isCurrent(key) {
 }
 
 function isCurrentMnavCompany(entry) {
-  return Boolean(entry?.meta && Number.isFinite(entry.meta.fetchedAt) && Date.now() - entry.meta.fetchedAt < TTL.mnav);
+  const age = Date.now() - entry?.meta?.fetchedAt;
+  return Number.isFinite(age) && age >= -60000 && age < TTL.mnav;
+}
+
+function selectMstrEntry() {
+  const primary = state.mnavCompanies.mstr;
+  const snapshot = state.strcIssuance?.mstrSnapshot;
+  const meta = state.meta['strc-issuance'];
+  if (!isCurrentMstrSnapshot(snapshot) || !isCurrentMnavCompany({ meta })) return primary;
+  // Preserve the API's independent BMNR request and prefer equally/newer dated
+  // official API data. A partial/legacy API reply must not hide official mNAV.
+  if (isCurrentMnavCompany(primary) && finitePositive(primary.value?.officialMnav)
+    && primary.value.officialMnavAsOf >= snapshot.officialMnavAsOf) return primary;
+  return { kind: 'raw', value: snapshot, cached: true,
+    meta: { ...meta, dataAt: snapshot.officialMnavAsOf } };
 }
 
 function commit(key, result, apply) {
@@ -569,7 +584,7 @@ function applyMnavCard(id, value, detail) {
 
 function renderMnav() {
   const derived = { mstr: null, bmnr: null };
-  const mstrEntry = state.mnavCompanies.mstr;
+  const mstrEntry = selectMstrEntry();
   const bmnrEntry = state.mnavCompanies.bmnr;
   if (mstrEntry && isCurrentMnavCompany(mstrEntry)) {
     derived.mstr = mstrEntry.kind === 'raw'
@@ -822,7 +837,8 @@ function renderStrcFlywheel(value) {
 
 function renderStrcIssuance(value) {
   state.strcIssuance = value;
-  if ($('strc-atm') && finite(value?.atmRemainingM)) $('strc-atm').textContent = `$${(value.atmRemainingM / 1000).toFixed(2)}B`;
+  if ($('strc-atm')) $('strc-atm').textContent = finite(value?.atmRemainingM) ? `$${(value.atmRemainingM / 1000).toFixed(2)}B` : '$--';
+  renderMnav();
 }
 
 function fmtBillions(value) { return finite(value) ? `$${(value / 1e9).toFixed(2)}B` : '$--'; }
@@ -972,7 +988,7 @@ function onSchedulerStatus(status) {
   }
   if (status.key === 'mnav') {
     for (const company of ['mstr', 'bmnr']) {
-      const entry = state.mnavCompanies[company];
+      const entry = company === 'mstr' ? selectMstrEntry() : state.mnavCompanies[company];
       if (status.phase === 'loading') {
         setMnavStatus(company, entry ? (isCurrentMnavCompany(entry) ? 'cached' : 'stale') : 'loading', entry?.meta || status);
         if (entry) {

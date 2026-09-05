@@ -420,15 +420,45 @@ export function isValidFlywheelValue(value) {
   return valid;
 }
 
+function validMstrSnapshot(value) {
+  return Boolean(value && NUMBER(value.officialMnav) && value.officialMnav > 0
+    && NUMBER(value.officialMnavAsOf) && value.officialMnavAsOf > 0
+    && NUMBER(value.snapshotAt) && value.snapshotAt > 0);
+}
+
+export function isCurrentMstrSnapshot(value, now = Date.now()) {
+  return validMstrSnapshot(value) && [value.snapshotAt, value.officialMnavAsOf]
+    .every(date => date <= now + 60000 && now - date <= 7 * 86400000);
+}
+
+function parseMstrSnapshot(payload) {
+  const snapshotAt = timestamp(payload?.ts);
+  // Only explicitly reported mNAV qualifies; Basic/EV ratios are not substitutes.
+  for (const item of [payload?.mnav, payload?.strategy_official]) {
+    const date = item?.data_as_of;
+    const usDate = typeof date === 'string' && date.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    const officialMnavAsOf = timestamp(usDate
+      ? `${usDate[3]}-${usDate[1].padStart(2, '0')}-${usDate[2].padStart(2, '0')}` : date);
+    const value = { officialMnav: positive(item?.mnav_official), officialMnavAsOf, snapshotAt };
+    if (isCurrentMstrSnapshot(value)) return value;
+  }
+  return null;
+}
+
 export function parseIssuancePayload(payload) {
   const issuance = payload?.issuance ?? payload;
   const amount = number(issuance?.parsed?.strc?.atm_remaining_m);
-  if (amount == null || amount < 0) invalid('invalid STRC issuance response');
-  return record({ atmRemainingM: amount }, 'strc-issuance', sourceDate(issuance));
+  const mstrSnapshot = parseMstrSnapshot(payload);
+  const atmRemainingM = amount != null && amount >= 0 ? amount : null;
+  if (atmRemainingM == null && !mstrSnapshot) invalid('invalid STRC issuance response');
+  return record({ atmRemainingM, ...(mstrSnapshot ? { mstrSnapshot } : {}) }, 'strc-issuance', sourceDate(issuance));
 }
 
 export function isValidIssuanceValue(value) {
-  return Boolean(value && typeof value === 'object' && NUMBER(value.atmRemainingM) && value.atmRemainingM >= 0);
+  if (!value || typeof value !== 'object') return false;
+  if (value.mstrSnapshot != null && !validMstrSnapshot(value.mstrSnapshot)) return false;
+  if (value.atmRemainingM == null) return validMstrSnapshot(value.mstrSnapshot);
+  return NUMBER(value.atmRemainingM) && value.atmRemainingM >= 0;
 }
 
 export function isValidForecast2027(value) {
