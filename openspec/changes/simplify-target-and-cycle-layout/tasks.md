@@ -1,0 +1,5 @@
+- [x] Replace target controls with one allocation percentage, default 2%.
+- [x] Show current share/price and derived price/net inflow with disclosed assumptions.
+- [x] Consolidate halving into the cycle metric row.
+- [x] Verify arithmetic, input/expiry behavior, six widths and row placement.
+- [ ] Publish and verify the production layout.

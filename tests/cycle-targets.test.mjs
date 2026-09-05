@@ -4,9 +4,22 @@ import {
   ALLOCATION_SCENARIOS,
   DEFAULT_PARAMS,
   calculateCycleTargets,
+  calculateAllocationTarget,
   formatUsd,
   validateParams
 } from '../assets/cycle-targets.mjs';
+
+test('single allocation control defaults to 2% and derives target price and funding', () => {
+  const result = calculateAllocationTarget(undefined, 80000);
+  assert.equal(result.allocationPct, 2);
+  assert.equal(result.targetPrice, 300000);
+  assert.equal(result.manualTarget.capitalization, 6e12);
+  assert.equal(result.funding.cumulative.low, 220e9);
+  assert.equal(result.funding.cumulative.high, 4.4e12 / 15);
+  assert.equal(calculateAllocationTarget(1, 80000).targetPrice, 150000);
+  assert.equal(calculateAllocationTarget(2, null).funding, null);
+  for (const invalid of ['', 0, -1, 101, Infinity]) assert.equal(calculateAllocationTarget(invalid).valid, false);
+});
 
 test('allocation scenarios map 300T / 20M to the expected target prices', () => {
   const result = calculateCycleTargets(DEFAULT_PARAMS, 80_000);

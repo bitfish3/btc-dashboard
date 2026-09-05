@@ -9,6 +9,7 @@ export const DEFAULT_PARAMS = Object.freeze({
 });
 
 export const ALLOCATION_SCENARIOS = Object.freeze([0.01, 0.015, 0.02, 0.025, 0.03, 0.05]);
+export const DEFAULT_ALLOCATION_PCT = 2;
 
 const USD_T = 1e12;
 const BTC_M = 1e6;
@@ -143,44 +144,57 @@ function noopController() {
   return { update() {}, render() {}, destroy() {} };
 }
 
+export function calculateAllocationTarget(allocationPct = DEFAULT_ALLOCATION_PCT, currentPrice = null) {
+  const allocation = number(allocationPct);
+  if (!finitePositive(allocation) || allocation > 100) {
+    return { valid: false, errors: ['占比请输入大于 0、且不超过 100 的数字'], funding: null };
+  }
+  const targetPrice = DEFAULT_PARAMS.assetPoolT * USD_T * allocation / 100 / (DEFAULT_PARAMS.supplyM * BTC_M);
+  const result = calculateCycleTargets({ ...DEFAULT_PARAMS, targetPrice }, currentPrice);
+  return { ...result, allocationPct: allocation, targetPrice };
+}
+
+function priceInChinese(value) {
+  if (!finitePositive(value)) return '--';
+  return value >= 10000 ? `${trimNumber(value / 10000)} 万美元` : `${Math.round(value).toLocaleString('zh-CN')} 美元`;
+}
+
+function fundingInChinese(funding) {
+  if (!funding) return '待报价';
+  if (funding.high === 0) return '已达到，无需新增';
+  const divisor = funding.high >= 1e8 ? 1e8 : funding.high >= 1e4 ? 1e4 : 1;
+  const unit = divisor === 1e8 ? '亿美元' : divisor === 1e4 ? '万美元' : '美元';
+  const low = Math.round(funding.low / divisor).toLocaleString('zh-CN');
+  const high = Math.round(funding.high / divisor).toLocaleString('zh-CN');
+  return `${low === high ? low : `${low}–${high}`} ${unit}`;
+}
+
 export function createCycleTargets(root = null) {
   if (!root || typeof root.querySelector !== 'function') return noopController();
-  const inputIds = ['assetPoolT', 'supplyM', 'targetPrice', 'impactLow', 'impactHigh', 'yearsLow', 'yearsHigh'];
-  const inputs = Object.fromEntries(inputIds.map(key => [key, root.querySelector(`[data-target-input="${key}"]`)]));
-  const readParams = () => Object.fromEntries(inputIds.map(key => [key, inputs[key]?.value ?? DEFAULT_PARAMS[key]]));
-  const setInput = (key, value) => { if (inputs[key]) inputs[key].value = String(value); };
+  const input = root.querySelector('[data-target-input="allocationPct"]');
+  if (!input) return noopController();
   let currentPrice = null;
   let pending = false;
-  let latest = calculateCycleTargets(readParams(), null);
+  let latest = calculateAllocationTarget(input.value, null);
 
   function render(result = latest) {
     latest = result;
-    const setText = (selector, text) => { const element = root.querySelector(selector); if (element) element.textContent = text; };
+    const setText = (selector, text) => { const element = root.querySelector(selector); if (element && element.textContent !== text) element.textContent = text; };
     const error = root.querySelector('[data-target-errors]');
     if (error) {
       error.textContent = result.errors.join(' · ');
       error.hidden = result.errors.length === 0;
     }
-    if (!result.valid) {
-      for (const selector of ['[data-target-current-price]', '[data-target-current-cap]', '[data-target-manual-cap]', '[data-target-manual-share]', '[data-target-gap]', '[data-target-cumulative]', '[data-target-annual]', '[data-target-monthly]']) setText(selector, '--');
-      const body = root.querySelector('[data-target-rows]');
-      if (body) body.replaceChildren();
-      return result;
-    }
-    setText('[data-target-current-price]', result.quote == null ? '不可用' : `$${Math.round(result.quote).toLocaleString('en-US')}`);
-    setText('[data-target-current-cap]', result.current ? formatUsd(result.current.capitalization) : '不可用');
-    setText('[data-target-manual-cap]', formatUsd(result.manualTarget.capitalization));
-    setText('[data-target-manual-share]', formatPercent(result.manualTarget.share));
-    setText('[data-target-gap]', result.deltaCapitalization == null ? '不可用' : result.deltaCapitalization === 0 ? '已达到该情景' : formatUsd(result.deltaCapitalization));
-    setText('[data-target-cumulative]', formatRange(result.funding?.cumulative));
-    setText('[data-target-annual]', formatRange(result.funding?.annual));
-    setText('[data-target-monthly]', formatRange(result.funding?.monthly));
-    const body = root.querySelector('[data-target-rows]');
-    if (body) {
-      body.innerHTML = result.allocationRows.map(row => `<tr><td>${formatPercent(row.allocation, 1)}</td><td>${formatUsd(row.capitalization)}</td><td>${formatUsd(row.targetPrice, 0)}</td><td>${row.reached ? '已达到' : row.funding?.cumulative ? formatRange(row.funding.cumulative) : '不可用'}</td></tr>`).join('');
-    }
+    const currentShare = currentPrice == null ? null : currentPrice * DEFAULT_PARAMS.supplyM * BTC_M / (DEFAULT_PARAMS.assetPoolT * USD_T);
+    setText('[data-target-current-share]', formatPercent(currentShare));
+    setText('[data-target-current-price]', currentPrice == null ? '待报价' : priceInChinese(currentPrice));
+    setText('[data-target-goal-price]', result.valid ? priceInChinese(result.targetPrice) : '--');
+    setText('[data-target-cumulative]', result.valid ? fundingInChinese(result.funding?.cumulative) : '--');
     const stale = root.querySelector('[data-target-quote-note]');
-    if (stale) stale.textContent = result.quote == null ? '现价缺失或已过期；目标估值仍按假设计算，资金需求等待有效现价。' : '现价来自主看板；资产池、供给、乘数和期限均为可调情景假设。';
+    if (stale) {
+      stale.hidden = currentPrice != null;
+      stale.textContent = '现价缺失或已过期；价格目标仍可估算，资金需求等待有效报价。';
+    }
     return result;
   }
 
@@ -189,20 +203,11 @@ export function createCycleTargets(root = null) {
     pending = true;
     queueMicrotask(() => {
       pending = false;
-      render(calculateCycleTargets(readParams(), currentPrice));
+      render(calculateAllocationTarget(input.value, currentPrice));
     });
   }
 
-  for (const input of Object.values(inputs)) input?.addEventListener('input', scheduleRender, { passive: true });
-  root.querySelector('[data-target-preset="reference"]')?.addEventListener('click', () => {
-    for (const [key, value] of Object.entries(DEFAULT_PARAMS)) setInput(key, value);
-    scheduleRender();
-  });
-  root.querySelector('[data-target-preset="stress"]')?.addEventListener('click', () => {
-    setInput('impactLow', 5);
-    setInput('impactHigh', 5);
-    scheduleRender();
-  });
+  input.addEventListener('input', scheduleRender, { passive: true });
   render(latest);
   return {
     update(price) {
@@ -210,7 +215,7 @@ export function createCycleTargets(root = null) {
       scheduleRender();
     },
     render,
-    destroy() {},
+    destroy() { input.removeEventListener('input', scheduleRender); },
     getState() { return latest; }
   };
 }

@@ -228,25 +228,26 @@ async function runScenario(browser, root, name, options = {}) {
     result.timings.domContentLoaded = Date.now() - started;
 
     if (name === 'cycle-targets') {
-      await page.waitForFunction(() => document.querySelector('[data-target-manual-cap]')?.textContent?.includes('$3.4T'), null, { timeout: 2500 });
-      check(/\$3\.4T/.test(await textOf('[data-target-manual-cap]')), 'reference target capitalization is visible');
-      check(/\$150K/.test(await textOf('[data-target-rows]')), '1% allocation target price is visible');
+      await page.waitForFunction(() => document.querySelector('[data-target-goal-price]')?.textContent === '30 万美元', null, { timeout: 2500 });
+      check(await page.locator('#targets input').count() === 1, 'allocation is the only editable target parameter');
+      check(await page.locator('#target-allocation').inputValue() === '2', 'target allocation defaults to 2%');
+      await page.waitForFunction(() => document.querySelector('[data-target-current-share]')?.textContent === '0.67%', null, { timeout: 2500 });
+      check((await textOf('[data-target-current-price]')) === '10 万美元', 'current price and share are visible');
       const beforeRequests = externalRequests.length;
       const changedAt = Date.now();
-      await page.locator('#target-price').fill('180000');
-      await page.waitForFunction(() => document.querySelector('[data-target-manual-cap]')?.textContent?.includes('$3.6T'), null, { timeout: 100 });
+      await page.locator('#target-allocation').fill('1');
+      await page.waitForFunction(() => document.querySelector('[data-target-goal-price]')?.textContent === '15 万美元', null, { timeout: 100 });
       check(Date.now() - changedAt <= 100, 'target input updates within 100ms');
-      await page.locator('[data-target-preset="reference"]').press('Enter');
-      await page.waitForFunction(() => document.querySelector('[data-target-manual-cap]')?.textContent?.includes('$3.4T'), null, { timeout: 2500 });
-      await page.locator('[data-target-preset="stress"]').press('Enter');
-      await page.waitForFunction(() => document.querySelector('[data-target-cumulative]')?.textContent?.includes('$280B'), null, { timeout: 2500 });
-      check(/\$280B/.test(await textOf('[data-target-cumulative]')), '5x stress funding is visible for the fixture quote');
-      await page.locator('#target-supply').fill('0');
+      check((await textOf('[data-target-cumulative]')) === '500–667 亿美元', 'funding follows the single allocation input');
+      await page.locator('#target-allocation').fill('0');
       await page.waitForFunction(() => !document.querySelector('[data-target-errors]')?.hidden, null, { timeout: 100 });
       check((await textOf('[data-target-cumulative]')) === '--', 'invalid target parameters clear funding');
       check(/\$100,000/.test(await textOf('#btc-price')), 'invalid target parameters leave the main quote intact');
-      await page.locator('[data-target-preset="reference"]').press('Enter');
+      await page.locator('#target-allocation').fill('2');
       await page.waitForFunction(() => document.querySelector('[data-target-errors]')?.hidden, null, { timeout: 100 });
+      await page.locator('#target-allocation').press('ArrowUp');
+      await page.waitForFunction(() => document.querySelector('[data-target-goal-price]')?.textContent === '31.5 万美元', null, { timeout: 100 });
+      await page.locator('#target-allocation').fill('2');
       check(externalRequests.length === beforeRequests, 'target controls add no network requests');
       await page.locator('#targets').screenshot({ path: join(evidenceRoot, 'screenshots/cycle-targets-desktop.png') });
       await page.setViewportSize({ width: 375, height: 812 });
@@ -272,8 +273,8 @@ async function runScenario(browser, root, name, options = {}) {
       check((await textOf('#p50-val')) === '--', 'expired mining percentile is cleared after refresh failure');
       check((await textOf('#mstr-mnav')) === '--', 'expired MSTR mNAV is cleared after refresh failure');
       check((await textOf('#bmnr-mnav')) === '--', 'expired BMNR mNAV is cleared after refresh failure');
-      check((await textOf('[data-target-cumulative]')) === '--', 'expired quote clears target funding');
-      check((await textOf('[data-target-manual-cap]')) === '$3.4T', 'target valuation remains visible without a fresh quote');
+      check((await textOf('[data-target-cumulative]')) === '待报价', 'expired quote clears target funding');
+      check((await textOf('[data-target-goal-price]')) === '30 万美元', 'target valuation remains visible without a fresh quote');
       await page.screenshot({ path: join(evidenceRoot, 'screenshots/expiry-refresh-safe-state.png'), fullPage: false });
     }
 
@@ -437,6 +438,14 @@ async function runResponsive(browser, root) {
     });
     assert.ok(sentiment.textWidth >= 120, `${viewport.width}px sentiment text compressed to ${sentiment.textWidth}px`);
     assert.ok(sentiment.statusTop >= sentiment.contentBottom, `${viewport.width}px sentiment source overlaps its content`);
+    const halvingLayout = await page.evaluate(() => {
+      const halving = document.querySelector('#halving-days');
+      const top = selector => document.querySelector(selector).closest('.cycle-card').getBoundingClientRect().top;
+      return { inMatrix: Boolean(halving.closest('.matrix-grid')), halvingTop: top('#halving-days'), firstTop: top('#mvrv-value'), psipTop: top('#psip-value') };
+    });
+    assert.ok(halvingLayout.inMatrix, 'halving is grouped with the cycle metrics');
+    if (viewport.width >= 1025) assert.equal(halvingLayout.halvingTop, halvingLayout.firstTop, 'desktop cycle metrics occupy one row');
+    if (viewport.width >= 360 && viewport.width <= 767) assert.equal(halvingLayout.halvingTop, halvingLayout.psipTop, 'mobile halving shares the PSIP row');
     if (viewport.width === 390 || viewport.width === 375) {
       await page.locator('.fng-section').evaluate(card => card.scrollIntoView({ block: 'center' }));
       await page.locator('.fng-section').screenshot({ path: join(evidenceRoot, `screenshots/sentiment-mobile-${viewport.width}.png`) });

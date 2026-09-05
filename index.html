@@ -452,7 +452,7 @@
     .fng-status { margin: 0 0 5px; font-size: 24px; font-weight: 800; }
     .fng-desc { color: var(--dim); font-size: 13px; }
 
-    .matrix-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+    .matrix-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
     .cycle-card {
       min-width: 0; padding: 14px; background: var(--card); border: 1px solid var(--border);
       border-radius: var(--radius); box-shadow: none;
@@ -471,29 +471,19 @@
     .vwap-table td:first-child { font-size: 13px; }
     .inline-note { margin-top: 9px; color: var(--dim); font-size: 13px; }
 
-    .target-grid { display: grid; grid-template-columns: minmax(320px, 4fr) minmax(0, 8fr); gap: 10px; }
-    .target-panel { min-width: 0; padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); }
-    .target-panel-title { margin-bottom: 12px; color: var(--dim); font-size: 13px; font-weight: 700; letter-spacing: .04em; }
-    .target-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-    .target-field { display: grid; gap: 5px; min-width: 0; }
-    .target-field label { color: var(--dim); font-size: 12px; }
-    .target-field input { width: 100%; min-height: 38px; padding: 7px 9px; color: var(--text); background: var(--card-raised); border: 1px solid var(--border); border-radius: 4px; font: inherit; font-variant-numeric: tabular-nums; }
-    .target-field input:focus-visible, .target-button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-    .target-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-    .target-button { min-height: 36px; padding: 0 11px; color: var(--text); background: transparent; border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font: inherit; font-size: 12px; }
-    .target-button:hover { border-color: var(--gold); color: var(--gold); }
+    .target-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); font-size: 13px; }
+    .target-current { color: var(--dim); line-height: 1.6; }
+    .target-current strong { color: var(--text); }
+    .target-control { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .target-control input { width: 66px; min-height: 44px; padding: 6px; border: 1px solid var(--border); border-radius: 4px; background: var(--card-raised); color: var(--gold); font: 700 16px ui-monospace, monospace; text-align: center; }
+    .target-control input:focus-visible, .target-method summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    .target-result { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 5px; line-height: 1.6; }
+    .target-result strong { color: var(--gold); font-size: 17px; font-variant-numeric: tabular-nums; }
+    .target-method { margin-top: 8px; color: var(--dim); font-size: 12px; line-height: 1.6; }
+    .target-method summary { cursor: pointer; width: fit-content; padding: 4px 0; }
+    .target-method p { max-width: 800px; margin: 8px 0 0; }
     .target-errors { margin: 10px 0 0; color: var(--red); font-size: 12px; line-height: 1.5; }
     .target-note { margin-top: 11px; color: var(--dim); font-size: 12px; line-height: 1.5; }
-    .target-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
-    .target-metric { min-width: 0; padding: 10px; border: 1px solid var(--border); border-radius: 4px; background: var(--card-raised); }
-    .target-metric-label { color: var(--dim); font-size: 11px; }
-    .target-metric-value { margin-top: 3px; color: var(--text); font: 700 16px/1.2 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-variant-numeric: tabular-nums; }
-    .target-table-wrap { overflow-x: auto; }
-    .target-table { width: 100%; min-width: 560px; font-size: 12px; }
-    .target-table th, .target-table td { padding: 8px 7px; border-bottom: 1px solid var(--border); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .target-table th { color: var(--dim); font-size: 11px; font-weight: 600; }
-    .target-table th:first-child, .target-table td:first-child { text-align: left; }
-    .target-formula { margin-top: 12px; color: var(--dim); font-size: 12px; line-height: 1.6; }
 
     .risk-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(320px, 5fr); gap: 24px; }
     .risk-panel { min-width: 0; }
@@ -554,7 +544,6 @@
       .data-cadence { margin-left: auto; }
       .workspace-section { scroll-margin-top: 110px; }
       .overview-grid, .risk-grid { grid-template-columns: minmax(0, 1fr); }
-      .target-grid { grid-template-columns: minmax(0, 1fr); }
       .fng-section { grid-template-columns: 140px minmax(0, 1fr); grid-template-areas: "gauge info" "status status"; align-items: center; }
       .matrix-grid, .anchor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .anchor-vwap { grid-column: span 2; }
@@ -586,8 +575,7 @@
       .anchor-vwap { grid-column: 1 / -1; }
       .cycle-main { font-size: 20px; }
       .prob-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .target-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .target-metric:nth-last-child(-n+2) { grid-column: 1 / -1; }
+      .target-current { flex-basis: 100%; }
       .assumption-strip { grid-template-columns: 1fr auto; gap: 10px 12px; padding: 13px; }
       .elec-label { grid-column: 1; }
       .elec-value { grid-column: 2; grid-row: 1; text-align: right; }
@@ -710,50 +698,27 @@
         <article class="cycle-card"><div class="cycle-card-title">SOPR</div><div class="cycle-main" id="sopr-value" style="color:var(--green)">--</div><div class="cycle-sub"><span id="sopr-note" style="color:var(--dim)">&lt;1 亏损投降 · =1 临界 · &gt;1 获利了结</span></div></article>
         <article class="cycle-card"><div class="cycle-card-title">Puell Multiple</div><div class="cycle-main" id="puell-value" style="color:var(--green)">--</div><div class="cycle-sub"><span id="puell-note" style="color:var(--dim)">&lt;0.5 矿工投降 · 0.5~1 承压 · &gt;4 顶部</span></div></article>
         <article class="cycle-card"><div class="cycle-card-title">PSIP · 获利筹码占比</div><div class="cycle-main" id="psip-value" style="color:var(--dim)">--</div><div class="cycle-sub"><span id="psip-note" style="color:var(--dim)">暂无可靠数据，暂不参与周期判断</span></div></article>
+        <article class="cycle-card"><div class="cycle-card-title">减半倒计时</div><div class="cycle-main" id="halving-days" style="color:var(--gold)">--- 天</div><div class="cycle-sub">当前区块 <span id="halving-block">---</span> / 目标 <span>1,050,000</span><br>奖励 3.125 → <span>1.5625 BTC</span> · 预计 <span id="halving-date">---</span></div><div class="halving-bar"><div class="halving-fill" id="halving-fill" style="width:0%"></div></div></article>
       </div>
       <div class="section-heading" style="margin-top:28px"><div><h2>估值与成本锚</h2></div><p>周频锚点用于识别相对位置，不等于交易信号。</p></div>
       <div class="anchor-grid">
         <article class="cycle-card"><div class="cycle-card-title">200 周均线 · 200WMA</div><div class="cycle-main" id="wma200-price" style="color:var(--blue)">$--,---</div><div class="cycle-sub">当前价格 / 200WMA = <span id="wma200-ratio">--</span>x<br><span id="wma200-note" style="color:var(--dim)">BTC 历史上从未长期跌破 200WMA</span></div></article>
         <article class="cycle-card"><div class="cycle-card-title">Balanced Price · 均衡价格</div><div class="cycle-main" id="bp-price" style="color:var(--green)">$--,---</div><div class="cycle-sub">当前价格 / BP = <span id="bp-ratio">--</span>x<br><span id="bp-note" style="color:var(--dim)">已实现价格 − 转移价格</span></div></article>
         <article class="cycle-card anchor-vwap"><div class="cycle-card-title">全周期 VWAP 成本锚 · 现货 + IBIT 合成成交量加权</div><table class="vwap-table"><thead><tr><th>锚点</th><th>合成 VWAP（现价倍数）</th></tr></thead><tbody><tr><td>2017 全周期</td><td id="vwap-2017">--</td></tr><tr><td>2022/11 FTX 底</td><td id="vwap-2022">--</td></tr><tr><td>2024/04 减半</td><td id="vwap-halv">--</td></tr></tbody></table><div class="inline-note"><span id="vwap-note">每周更新；倍数 &gt;1 获利 / &lt;1 水下。参考 <a href="https://x.com/hazenlee" target="_blank" rel="noopener">@hazenlee</a></span></div></article>
-        <article class="cycle-card"><div class="cycle-card-title">减半倒计时</div><div class="cycle-main" id="halving-days" style="color:var(--gold)">--- 天</div><div class="cycle-sub">当前区块 <span id="halving-block">---</span> / 目标 <span>1,050,000</span><br>奖励 3.125 → <span>1.5625 BTC</span> · 预计 <span id="halving-date">---</span></div><div class="halving-bar"><div class="halving-fill" id="halving-fill" style="width:0%"></div></div></article>
       </div>
     </section>
 
     <section class="workspace-section" id="targets" aria-labelledby="targets-title">
-      <div class="section-heading"><div><h2 id="targets-title">本周期目标</h2></div><p>把资产配置假设转换为目标市值与资金需求。所有参数都是可调情景，不是预测。</p></div>
-      <div class="target-grid">
-        <article class="target-panel">
-          <div class="target-panel-title">情景参数</div>
-          <div class="target-controls">
-            <div class="target-field"><label for="target-asset-pool">全球可配置资产（T USD）</label><input id="target-asset-pool" data-target-input="assetPoolT" type="number" min="0.01" step="1" value="300" inputmode="decimal"></div>
-            <div class="target-field"><label for="target-supply">供给假设（M BTC）</label><input id="target-supply" data-target-input="supplyM" type="number" min="0.01" max="21" step="0.1" value="20" inputmode="decimal"></div>
-            <div class="target-field"><label for="target-price">手动目标价（USD）</label><input id="target-price" data-target-input="targetPrice" type="number" min="1" step="1000" value="170000" inputmode="decimal"></div>
-            <div class="target-field"><label for="target-impact-low">市值放大下限（×）</label><input id="target-impact-low" data-target-input="impactLow" type="number" min="0.01" step="1" value="15" inputmode="decimal"></div>
-            <div class="target-field"><label for="target-impact-high">市值放大上限（×）</label><input id="target-impact-high" data-target-input="impactHigh" type="number" min="0.01" step="1" value="20" inputmode="decimal"></div>
-            <div class="target-field"><label for="target-years-low">期限下限（年）</label><input id="target-years-low" data-target-input="yearsLow" type="number" min="0.1" step="0.5" value="2" inputmode="decimal"></div>
-            <div class="target-field"><label for="target-years-high">期限上限（年）</label><input id="target-years-high" data-target-input="yearsHigh" type="number" min="0.1" step="0.5" value="3" inputmode="decimal"></div>
-          </div>
-          <div class="target-actions"><button class="target-button" type="button" data-target-preset="reference">恢复参考参数</button><button class="target-button" type="button" data-target-preset="stress">5×压力情景</button></div>
-          <p class="target-note" data-target-quote-note>现价缺失或已过期；目标估值仍按假设计算，资金需求等待有效现价。</p>
-          <p class="target-errors" data-target-errors role="alert" hidden></p>
-          <p class="target-formula">目标市值 = 供给 × 目标价；累计资金需求 = 市值增量 ÷ 市值放大倍数。资金需求是净流入情景估算，不等于市值增量。</p>
-          <p class="target-note">T = 万亿美元，B = 十亿美元，M = 百万。默认 $300T 资产池与 20M BTC 供给为模型假设；15–20× 为可调整的价格冲击假设，实际乘数会随流动性变化。<a href="https://crypto-btc.pages.coinsummer.com/#s5" target="_blank" rel="noopener noreferrer">框架参考</a></p>
-        </article>
-        <article class="target-panel">
-          <div class="target-panel-title">手动目标 · 当前报价 <span data-target-current-price>不可用</span></div>
-          <div class="target-summary">
-            <div class="target-metric"><div class="target-metric-label">当前市值</div><div class="target-metric-value" data-target-current-cap>不可用</div></div>
-            <div class="target-metric"><div class="target-metric-label">目标市值</div><div class="target-metric-value" data-target-manual-cap>--</div></div>
-            <div class="target-metric"><div class="target-metric-label">目标占比</div><div class="target-metric-value" data-target-manual-share>--</div></div>
-            <div class="target-metric"><div class="target-metric-label">市值增量</div><div class="target-metric-value" data-target-gap>不可用</div></div>
-            <div class="target-metric"><div class="target-metric-label">累计净流入</div><div class="target-metric-value" data-target-cumulative>--</div></div>
-            <div class="target-metric"><div class="target-metric-label">年均 / 月均</div><div class="target-metric-value"><span data-target-annual>--</span><br><span data-target-monthly>--</span></div></div>
-          </div>
-          <div class="target-panel-title">资产池配置档位</div>
-          <div class="target-table-wrap"><table class="target-table"><thead><tr><th>配置</th><th>目标市值</th><th>目标价</th><th>累计资金需求</th></tr></thead><tbody data-target-rows></tbody></table></div>
-        </article>
+      <div class="section-heading"><h2 id="targets-title">本周期目标</h2></div>
+      <div class="target-strip">
+        <span class="target-current">现占约 <strong data-target-current-share>--</strong> · 现价 <span data-target-current-price>待报价</span></span>
+        <label class="target-control" for="target-allocation">BTC 占全球可配置资产 <input id="target-allocation" data-target-input="allocationPct" type="number" min="0.1" max="100" step="0.1" value="2" inputmode="decimal" aria-describedby="target-method-note">%</label>
+        <span class="target-result">→ 每枚约 <strong data-target-goal-price>--</strong></span>
+        <span class="target-result">需净流入约 <strong data-target-cumulative>待报价</strong></span>
       </div>
+      <p class="target-errors" data-target-errors role="alert" hidden></p>
+      <p class="target-note" data-target-quote-note hidden></p>
+      <details class="target-method"><summary>估算口径</summary><p id="target-method-note">假设全球可配置资产为 300 万亿美元、BTC 供给为 2,000 万枚。目标价 = 资产池 × 占比 ÷ BTC 数量；净流入 = 新增市值 ÷ 15–20 倍。资金推动价格的倍数会变化，以上为情景估算。<a href="https://crypto-btc.pages.coinsummer.com/#s5" target="_blank" rel="noopener noreferrer">参考框架</a></p></details>
     </section>
 
     <section class="workspace-section" id="risk" aria-labelledby="risk-title">
