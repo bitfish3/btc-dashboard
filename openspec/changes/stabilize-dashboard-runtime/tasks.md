@@ -1,13 +1,13 @@
 ## 1. Baseline and isolation
 
-- [ ] 1.1 Complete qa-only production baseline with reproduced issues, screenshots, score and limitations.
+- [x] 1.1 Complete qa-only production baseline with reproduced issues, screenshots, score and limitations.
 - [x] 1.2 Back up existing working tree and create isolated codex/stable-fast-dashboard branch; record original hashes.
 
 ## 2. Runtime foundation
 
-- [ ] 2.1 Implement fully bounded JSON requests and cancellable validated source racing, with regression tests.
-- [ ] 2.2 Implement validated memory-backed persistent cache with timestamp handling and storage-failure tests.
-- [ ] 2.3 Implement non-overlapping visibility-aware task scheduling and bounded failure backoff, with deterministic tests.
+- [x] 2.1 Implement fully bounded JSON requests and cancellable validated source racing, with regression tests.
+- [x] 2.2 Implement validated memory-backed persistent cache with timestamp handling and storage-failure tests.
+- [x] 2.3 Implement non-overlapping visibility-aware task scheduling and bounded failure backoff, with deterministic tests.
 
 ## 3. Data and presentation
 
